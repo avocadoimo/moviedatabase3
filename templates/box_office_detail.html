@@ -221,23 +221,10 @@
         }
     }
 
-    /* アニメーション */
+    /* アニメーション削除 */
     .section {
-        opacity: 0;
-        transform: translateY(20px);
-        animation: fadeInUp 0.6s ease-out forwards;
-    }
-
-    .section:nth-child(1) { animation-delay: 0.1s; }
-    .section:nth-child(2) { animation-delay: 0.2s; }
-    .section:nth-child(3) { animation-delay: 0.3s; }
-    .section:nth-child(4) { animation-delay: 0.4s; }
-
-    @keyframes fadeInUp {
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        opacity: 1;
+        transform: translateY(0);
     }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -284,7 +271,13 @@
                         {% for data in box_office_data %}
                         <tr>
                             <td><strong>{{ data.week }}</strong></td>
-                            <td class="revenue-cell">{{ "%.1f"|format(data.weekend_revenue) }}</td>
+                            <td class="revenue-cell">
+                                {% if data.weekend_revenue > 0 %}
+                                    {{ "%.1f"|format(data.weekend_revenue) }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             <td class="{% if data.weekend_change %}{% if data.weekend_change > 0 %}change-positive{% elif data.weekend_change < 0 %}change-negative{% else %}change-neutral{% endif %}{% else %}change-neutral{% endif %}">
                                 {% if data.weekend_change is not none %}
                                     {% if data.weekend_change > 0 %}+{% endif %}{{ "%.1f"|format(data.weekend_change) }}%
@@ -292,7 +285,13 @@
                                     -
                                 {% endif %}
                             </td>
-                            <td class="revenue-cell">{{ "%.1f"|format(data.weekly_revenue) }}</td>
+                            <td class="revenue-cell">
+                                {% if data.weekly_revenue > 0 %}
+                                    {{ "%.1f"|format(data.weekly_revenue) }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             <td class="{% if data.weekly_change %}{% if data.weekly_change > 0 %}change-positive{% elif data.weekly_change < 0 %}change-negative{% else %}change-neutral{% endif %}{% else %}change-neutral{% endif %}">
                                 {% if data.weekly_change is not none %}
                                     {% if data.weekly_change > 0 %}+{% endif %}{{ "%.1f"|format(data.weekly_change) }}%
@@ -394,7 +393,12 @@ document.addEventListener('DOMContentLoaded', function() {
             label: '累計興行収入 (億円)',
             data: [
                 {% for data in box_office_data %}
-                {{ data.total_revenue }}{% if not loop.last %},{% endif %}
+                {% if data.total_revenue > 0 %}
+                {{ data.total_revenue }}
+                {% else %}
+                null
+                {% endif %}
+                {% if not loop.last %},{% endif %}
                 {% endfor %}
             ],
             borderColor: '#1a73e8',
@@ -402,11 +406,15 @@ document.addEventListener('DOMContentLoaded', function() {
             borderWidth: 3,
             fill: true,
             tension: 0.4,
-            pointBackgroundColor: '#1a73e8',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 6,
-            pointHoverRadius: 8
+            pointBackgroundColor: 'transparent',
+            pointBorderColor: 'transparent',
+            pointBorderWidth: 0,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: '#1a73e8',
+            pointHoverBorderColor: '#fff',
+            pointHoverBorderWidth: 2,
+            spanGaps: true  // 重要: 穴抜けを線で繋ぐ
         }]
     };
 
@@ -427,8 +435,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     bodyColor: '#fff',
                     borderColor: '#1a73e8',
                     borderWidth: 1,
+                    filter: function(tooltipItem) {
+                        // null値の場合はツールチップを表示しない
+                        return tooltipItem.parsed.y !== null;
+                    },
                     callbacks: {
                         label: function(context) {
+                            if (context.parsed.y === null) {
+                                return null;
+                            }
                             return '累計興収: ' + context.parsed.y.toFixed(1) + '億円';
                         }
                     }
@@ -476,7 +491,12 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             elements: {
                 point: {
-                    hoverBackgroundColor: '#1558b0'
+                    hoverBackgroundColor: '#1558b0',
+                    // 通常時は点を非表示、ホバー時のみ表示
+                    radius: 0,
+                    hoverRadius: 6,
+                    backgroundColor: 'transparent',
+                    borderColor: 'transparent'
                 }
             }
         }
@@ -492,29 +512,24 @@ document.addEventListener('DOMContentLoaded', function() {
         window.scrollTo(0, 165);
     });
 
-    // テーブル行のホバーエフェクト
+    // テーブル行のホバーエフェクト（アニメーション削除）
     const tableRows = document.querySelectorAll('.data-table tbody tr, .ranking-table tbody tr');
     tableRows.forEach(row => {
         row.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.01)';
-            this.style.transition = 'transform 0.2s ease';
+            this.style.backgroundColor = '#f8f9fa';
         });
         
         row.addEventListener('mouseleave', function() {
-            this.style.transform = 'scale(1)';
+            this.style.backgroundColor = '';
         });
     });
 
-    // ランキングバッジのアニメーション
+    // ランキングバッジのアニメーション（削除）
+    // アニメーションなしで即座に表示
     const rankBadges = document.querySelectorAll('.rank-badge');
-    rankBadges.forEach((badge, index) => {
-        badge.style.opacity = '0';
-        badge.style.transform = 'scale(0.8)';
-        setTimeout(() => {
-            badge.style.transition = 'all 0.5s ease';
-            badge.style.opacity = '1';
-            badge.style.transform = 'scale(1)';
-        }, index * 200);
+    rankBadges.forEach((badge) => {
+        badge.style.opacity = '1';
+        badge.style.transform = 'scale(1)';
     });
 });
 </script>

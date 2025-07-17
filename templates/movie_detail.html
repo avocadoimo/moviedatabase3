@@ -38,95 +38,6 @@
         color: #444;
     }
 
-    /* 興行収入セクションの特別スタイル */
-    .revenue-section {
-        background: linear-gradient(135deg, #e8f5e8, #f0f8e8);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 20px 0;
-        border-left: 4px solid #4caf50;
-    }
-
-    .revenue-main {
-        font-size: 1.2em;
-        font-weight: 600;
-        color: #2e7d32;
-        margin-bottom: 8px;
-    }
-
-    .revenue-amount {
-        font-size: 2.5em;
-        font-weight: 700;
-        color: #1b5e20;
-        margin: 10px 0;
-        font-family: 'Noto Sans JP', Arial, sans-serif;
-    }
-
-    .revenue-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: linear-gradient(135deg, #4caf50, #388e3c);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-    }
-
-    .revenue-link:hover {
-        background: linear-gradient(135deg, #388e3c, #2e7d32);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-        color: white;
-    }
-
-    .revenue-link-icon {
-        font-size: 16px;
-    }
-
-    /* ジャンルタグのスタイル */
-    .genre-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 8px;
-    }
-
-    .genre-tag {
-        display: inline-block;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 16px;
-        font-size: 12px;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .genre-tag:hover {
-        background: linear-gradient(135deg, #5a6fd8, #6b42b3);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        color: white;
-    }
-
-    .genre-tag.action { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
-    .genre-tag.drama { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
-    .genre-tag.comedy { background: linear-gradient(135deg, #ffe259, #ffc845); color: #333; }
-    .genre-tag.animation { background: linear-gradient(135deg, #a8e6cf, #7fcdcd); color: #333; }
-    .genre-tag.romance { background: linear-gradient(135deg, #ff8a80, #ff5722); }
-    .genre-tag.thriller { background: linear-gradient(135deg, #424242, #212121); }
-    .genre-tag.horror { background: linear-gradient(135deg, #8e24aa, #5e35b1); }
-    .genre-tag.scifi { background: linear-gradient(135deg, #29b6f6, #0277bd); }
-    .genre-tag.fantasy { background: linear-gradient(135deg, #ba68c8, #9c27b0); }
-
     .copyright {
         font-size: 0.8em;
         color: #777;
@@ -184,30 +95,6 @@
         font-size: 1.2em;
     }
 
-    /* 推移データ利用可能バッジ */
-    .data-available-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        background: #e3f2fd;
-        color: #1976d2;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-left: 8px;
-    }
-
-    .data-available-badge.available {
-        background: #e8f5e8;
-        color: #2e7d32;
-    }
-
-    .data-available-badge.unavailable {
-        background: #ffebee;
-        color: #d32f2f;
-    }
-
     /* レスポンシブ対応 */
     @media (max-width: 767px) {
         .movie-detail-card {
@@ -216,14 +103,6 @@
 
         .poster-img {
             max-width: 250px;
-        }
-
-        .revenue-amount {
-            font-size: 2em;
-        }
-
-        .revenue-section {
-            padding: 16px;
         }
     }
 </style>
@@ -251,21 +130,10 @@
         <p>{{ movie.release_date or '情報なし' }}</p>
     </div>
 
-    <!-- 興行収入セクション（強化版） -->
-    <div class="revenue-section">
-        <div class="revenue-main">興行収入</div>
-        <div class="revenue-amount">{{ movie.revenue }}億円</div>
-        
-        {% if movie.movie_id %}
-            <!-- 興収推移データの存在確認は JavaScript で行う -->
-            <a href="{{ url_for('box_office_detail', movie_id=movie.id) }}" class="revenue-link" id="revenueLink">
-                <span class="revenue-link-icon">📈</span>
-                推移データ
-            </a>
-            <span class="data-available-badge" id="dataAvailableBadge" style="display: none;">
-                📊 データ利用可能
-            </span>
-        {% endif %}
+    <!-- 興行収入セクション -->
+    <div class="section" id="revenueSection" style="display: none;">
+        <h2>興行収入</h2>
+        <p id="revenueContent">{{ movie.revenue }}億円</p>
     </div>
 
     <div class="section">
@@ -281,7 +149,7 @@
         </p>
     </div>
 
-    <!-- ジャンル情報（強化版） -->
+    <!-- ジャンル情報 -->
     {% if movie.genre %}
     <div class="section">
         <h2>ジャンル</h2>
@@ -343,39 +211,24 @@
     document.addEventListener('DOMContentLoaded', function() {
         // 興収推移データの存在確認
         const movieId = {{ movie.id }};
-        const revenueLink = document.getElementById('revenueLink');
-        const dataAvailableBadge = document.getElementById('dataAvailableBadge');
+        const revenueSection = document.getElementById('revenueSection');
+        const revenueContent = document.getElementById('revenueContent');
         
-        if (revenueLink) {
+        if (revenueSection && revenueContent) {
             // 興収推移データの存在確認API呼び出し
             fetch(`/api/box-office-check/${movieId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.has_data) {
-                        // データがある場合
-                        if (dataAvailableBadge) {
-                            dataAvailableBadge.style.display = 'inline-flex';
-                            dataAvailableBadge.classList.add('available');
-                            dataAvailableBadge.innerHTML = '📊 推移データ利用可能';
-                        }
-                        
-                        // リンクのスタイルを強調
-                        revenueLink.style.background = 'linear-gradient(135deg, #4caf50, #388e3c)';
-                        revenueLink.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)';
-                    } else {
-                        // データがない場合
-                        revenueLink.style.display = 'none';
-                        
-                        if (dataAvailableBadge) {
-                            dataAvailableBadge.style.display = 'inline-flex';
-                            dataAvailableBadge.classList.add('unavailable');
-                            dataAvailableBadge.innerHTML = '📊 推移データなし';
-                        }
+                        // データがある場合：「○○億円→詳細データ」を表示
+                        revenueContent.innerHTML = `{{ movie.revenue }}億円→<a href="{{ url_for('box_office_detail', movie_id=movie.id) }}" class="clickable-item">詳細データ</a>`;
+                        revenueSection.style.display = 'block';
                     }
+                    // データがない場合は何も表示しない（デフォルトでdisplay: none）
                 })
                 .catch(error => {
                     console.error('興収推移データ確認エラー:', error);
-                    // エラーの場合はリンクを表示したまま
+                    // エラーの場合は表示しない
                 });
         }
     });
@@ -384,22 +237,8 @@
         window.scrollTo(0, 165);  // ← ページ読み込み直後に200px下にピタッと表示
     });
 
-    // ジャンルタグのアニメーション
-    document.addEventListener('DOMContentLoaded', function() {
-        const genreTags = document.querySelectorAll('.genre-tag');
-        genreTags.forEach((tag, index) => {
-            tag.style.opacity = '0';
-            tag.style.transform = 'translateY(10px)';
-            setTimeout(() => {
-                tag.style.transition = 'all 0.5s ease';
-                tag.style.opacity = '1';
-                tag.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
-    });
-
     // アクセシビリティ改善：キーボードナビゲーション
-    document.querySelectorAll('.genre-tag, .clickable-item').forEach(element => {
+    document.querySelectorAll('.clickable-item').forEach(element => {
         element.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
