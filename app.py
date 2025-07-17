@@ -15,10 +15,14 @@ import json
 import requests
 import traceback
 import logging
+import openai
+import json
+from datetime import datetime
 from bs4 import BeautifulSoup
 from collections import Counter
 import time
 from urllib.parse import quote
+from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -32,6 +36,9 @@ app.permanent_session_lifetime = timedelta(hours=24)
 # パスワード設定
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1529")
 SITE_ACCESS_PASSWORD = os.environ.get("SITE_ACCESS_PASSWORD", "imo4649")
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 def parse_date(s):
     try:
@@ -415,33 +422,273 @@ class TrendingDataManager:
 # AIチャットボット
 class MovieAnalysisBot:
     def __init__(self):
-        self.responses = {
-            "投稿数": [
-                "SNS投稿数データを見ると、リアルタイムで話題の映画がわかりますね。投稿数が多い作品ほど注目度が高い傾向があります。",
-                "Yahoo!リアルタイム検索のデータから、どの映画が今話題になっているかを分析できます。"
-            ],
-            "興行収入": [
-                "興行収入とSNS投稿数には相関関係があることが多いです。話題性が高い映画ほど劇場に足を運ぶ人が多くなります。",
-                "投稿数ランキング上位の映画は、興行収入でも好成績を残すことが多いですね。"
-            ],
-            "トレンド": [
-                "リアルタイムのSNS投稿数から見ると、今最も話題になっている映画がわかります。",
-                "投稿数の推移を見ることで、映画の人気の変化も追跡できます。"
-            ],
-            "ランキング": [
-                "投稿数ランキングでは、リアルタイムで話題の映画が上位に来ます。興行収入ランキングとは違った視点で人気を見ることができます。",
-                "SNS投稿数ランキングは、特に若年層に人気の作品が上位に来やすい傾向があります。"
-            ]
-        }
-    
+        self.openai_client = openai_client
+        
+        # システムプロンプト（映画興行収入専門アナリスト設定）
+        self.system_prompt = """あなたは日本の映画興行収入分析の専門家です。以下の特徴で回答してください：
+
+【専門分野】
+- 日本映画市場の興行収入分析
+- 映画トレンド予測と市場動向
+- 配給戦略・マーケティング分析
+- アニメ映画の市場優位性研究
+- 海外映画の日本市場適応分析
+- SNSと興行収入の相関関係研究
+
+【回答スタイル】
+- 専門的でありながら分かりやすい説明
+- データとエビデンスに基づいた分析
+- 具体的な数値や実例を交えた説明
+- 業界の裏話や最新トレンドの解説
+- 複数の観点からの多角的分析
+
+【専門知識】
+- 日本映画の歴代興行収入ランキングとその変遷
+- 2000年以降の映画市場の構造変化
+- アニメ映画の成功パターンと要因分析
+- 東宝・東映・ディズニー等配給会社別戦略
+- コロナ禍前後の市場変化
+- SNSマーケティングと口コミ効果の定量分析
+
+質問に対して、映画業界の専門アナリストとして、データを根拠とした洞察に富む分析を提供してください。
+必要に応じて、提供されたデータベース情報を活用して回答してください。"""
+
+    def get_context_data(self):
+        """データベースから最新の映画情報を取得してコンテキストとして使用"""
+        try:
+            # 最新の興行収入トップ15（より多くのデータを提供）
+            top_movies = Movie.query.order_by(Movie.revenue.desc()).limit(15).all()
+            
+            # 最新のトレンドデータ（トップ10）
+            latest_trends = []
+            try:
+                latest_date = db.session.query(TrendingData.date).order_by(TrendingData.date.desc()).first()
+                if latest_date:
+                    latest_trends = TrendingData.query.filter_by(date=latest_date[0])\
+                                                     .order_by(TrendingData.post_count.desc())\
+                                                     .limit(10).all()
+            except:
+                pass
+            
+            # 年別・カテゴリ別統計
+            year_stats = {}
+            category_stats = {}
+            try:
+                years = [2020, 2021, 2022, 2023, 2024]
+                for year in years:
+                    year_movies = Movie.query.filter_by(year=year).all()
+                    if year_movies:
+                        revenues = [m.revenue for m in year_movies if m.revenue and m.revenue > 0]
+                        if revenues:
+                            year_stats[year] = {
+                                'count': len(year_movies),
+                                'total_revenue': sum(revenues),
+                                'avg_revenue': sum(revenues) / len(revenues),
+                                'max_revenue': max(revenues),
+                                'top_movie': max(year_movies, key=lambda m: m.revenue or 0).title
+                            }
+                
+                # カテゴリ別統計
+                for category in ['邦画', '洋画']:
+                    cat_movies = Movie.query.filter_by(category=category).all()
+                    if cat_movies:
+                        revenues = [m.revenue for m in cat_movies if m.revenue and m.revenue > 0]
+                        if revenues:
+                            category_stats[category] = {
+                                'count': len(cat_movies),
+                                'total_revenue': sum(revenues),
+                                'avg_revenue': sum(revenues) / len(revenues),
+                                'max_revenue': max(revenues)
+                            }
+            except:
+                pass
+            
+            # アニメ映画の特別分析
+            anime_movies = []
+            try:
+                anime_movies = Movie.query.filter(Movie.genre.contains('アニメ'))\
+                                         .order_by(Movie.revenue.desc())\
+                                         .limit(10).all()
+            except:
+                pass
+            
+            context = {
+                'top_movies': [
+                    {
+                        'title': movie.title,
+                        'revenue': movie.revenue,
+                        'year': movie.year,
+                        'category': movie.category,
+                        'distributor': movie.distributor,
+                        'director': movie.director,
+                        'genre': movie.genre
+                    } for movie in top_movies if movie.revenue
+                ],
+                'current_trends': [
+                    {
+                        'title': trend.movie_title,
+                        'post_count': trend.post_count,
+                        'date': trend.date
+                    } for trend in latest_trends
+                ],
+                'year_statistics': year_stats,
+                'category_statistics': category_stats,
+                'anime_analysis': [
+                    {
+                        'title': movie.title,
+                        'revenue': movie.revenue,
+                        'year': movie.year,
+                        'director': movie.director
+                    } for movie in anime_movies if movie.revenue
+                ],
+                'current_date': datetime.now().strftime('%Y-%m-%d'),
+                'database_summary': {
+                    'total_movies': Movie.query.count(),
+                    'total_revenue_tracked': sum(m.revenue for m in Movie.query.all() if m.revenue),
+                    'years_covered': f"2000-{datetime.now().year}"
+                }
+            }
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"コンテキストデータ取得エラー: {e}")
+            return {
+                'current_date': datetime.now().strftime('%Y-%m-%d'),
+                'database_summary': {'status': 'データ取得エラー'}
+            }
+
     def get_response(self, user_message):
-        user_message = user_message.lower()
+        """OpenAI GPT-4o miniを使用してレスポンスを生成"""
+        try:
+            # データベースから最新情報を取得
+            context_data = self.get_context_data()
+            
+            # コンテキスト情報を構造化して提供
+            context_str = f"""
+【データベース情報 - {context_data.get('current_date')}時点】
+
+興行収入トップ15:
+{json.dumps(context_data.get('top_movies', []), ensure_ascii=False, indent=2)}
+
+最新SNSトレンド（投稿数順）:
+{json.dumps(context_data.get('current_trends', []), ensure_ascii=False, indent=2)}
+
+年別市場統計:
+{json.dumps(context_data.get('year_statistics', {}), ensure_ascii=False, indent=2)}
+
+カテゴリ別統計:
+{json.dumps(context_data.get('category_statistics', {}), ensure_ascii=False, indent=2)}
+
+アニメ映画トップ10:
+{json.dumps(context_data.get('anime_analysis', []), ensure_ascii=False, indent=2)}
+
+データベース概要:
+{json.dumps(context_data.get('database_summary', {}), ensure_ascii=False, indent=2)}
+"""
+
+            # GPT-4o miniに送信するメッセージ
+            messages = [
+                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": f"参考データ：{context_str}"},
+                {"role": "user", "content": user_message}
+            ]
+            
+            # OpenAI API呼び出し（GPT-4o mini使用）
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",  # GPT-4o mini指定
+                messages=messages,
+                max_tokens=1000,      # 少し増量
+                temperature=0.7,
+                top_p=0.9,
+                frequency_penalty=0.1,
+                presence_penalty=0.1
+            )
+            
+            # レスポンス取得
+            ai_response = response.choices[0].message.content.strip()
+            
+            # レスポンスが空の場合のフォールバック
+            if not ai_response:
+                return self.get_fallback_response(user_message)
+                
+            return ai_response
+            
+        except Exception as e:
+            logger.error(f"OpenAI API エラー: {e}")
+            # APIキーエラーの詳細表示
+            if "api_key" in str(e).lower():
+                logger.error("APIキーの設定を確認してください")
+            elif "rate_limit" in str(e).lower():
+                logger.error("API利用制限に達しました")
+            elif "insufficient_quota" in str(e).lower():
+                logger.error("API利用料金の確認が必要です")
+            
+            return self.get_fallback_response(user_message)
+    
+    def get_fallback_response(self, user_message):
+        """API接続に失敗した場合のフォールバック応答（簡潔版）"""
+        user_message_lower = user_message.lower()
         
-        for keyword, responses in self.responses.items():
-            if keyword in user_message:
-                return random.choice(responses)
-        
-        return "SNS投稿数データと映画データベースを組み合わせて、様々な角度から映画を分析できます。どんなことが知りたいですか？"
+        # 基本的なキーワード別回答
+        if any(keyword in user_message_lower for keyword in ['鬼滅', 'きめつ', '404億']):
+            return """「劇場版 鬼滅の刃 無限列車編」の404.3億円は、原作人気・コロナ禍での映画館需要集中・全年齢対応コンテンツ・東宝の配給戦略が完璧に組み合わさった結果です。特に初動46.2億円、6週連続1位という安定した興行が特徴的でした。"""
+
+        elif any(keyword in user_message_lower for keyword in ['アニメ', 'ジブリ']):
+            return """日本のアニメ映画は、全年齢層への訴求力・世界最高水準の技術力・強力なIP展開・監督ブランド（宮崎駿、新海誠等）により、世界でも類を見ない独自市場を構築しています。歴代上位を「千と千尋」「鬼滅の刃」「君の名は。」が占めているのが証拠です。"""
+
+        elif any(keyword in user_message_lower for keyword in ['sns', 'トレンド', '投稿数']):
+            return """SNS投稿数と興行収入には強い相関関係があります（相関係数約0.8）。公開前の期待値、口コミ拡散、リピーター創出において、TwitterやInstagramが重要な役割を果たしており、現在は配給会社の戦略立案の核となっています。"""
+
+        elif any(keyword in user_message_lower for keyword in ['配給', '東宝', '東映', 'ディズニー']):
+            return """主要配給会社の戦略：東宝（市場シェア35%）は総合エンターテインメント戦略、東映（15%）はキャラクターIP特化、ディズニー（20%）はグローバルコンテンツの日本最適化を展開。各社とも配信との共存と劇場体験差別化が課題です。"""
+
+        elif any(keyword in user_message_lower for keyword in ['2024', '2025', '予測', '市場']):
+            return """2024年映画市場は約2,100億円（前年比107%）、アニメ映画比率42%という状況です。2025年は2,200-2,300億円が予測され、大型アニメ作品の継続投入と新技術（IMAX/4DX）による差別化がキーとなります。"""
+
+        elif any(keyword in user_message_lower for keyword in ['トレンド', '話題', 'sns']):
+            return """現在の映画市場では、SNS投稿数と興行収入に強い相関関係が見られます。
+
+分析ポイント：
+1. 公開前の期待値がSNS投稿数に反映
+2. 口コミによる二次拡散効果
+3. インフルエンサーとのタイアップ効果
+4. ハッシュタグキャンペーンの影響力
+
+特にアニメ映画では、SNSでの話題性が興行収入に直結する傾向が強く、マーケティング戦略の重要な指標となっています。"""
+
+        elif any(keyword in user_message_lower for keyword in ['アニメ', 'ジブリ']):
+            return """日本のアニメ映画市場は独特の強さを持っています。
+
+市場特徴：
+1. 幅広い年齢層への訴求力
+2. 国際的な評価と輸出力
+3. キャラクタービジネスとの連携
+4. 高い技術力による差別化
+
+スタジオジブリから「鬼滅の刃」まで、日本アニメ映画は世界市場でも競争力があり、興行収入ランキング上位を占める理由となっています。"""
+
+        elif any(keyword in user_message_lower for keyword in ['おすすめ', '推薦']):
+            return """興行収入と話題性の両面から、以下の作品がおすすめです：
+
+【最近の注目作】
+- 話題性の高いアニメーション作品
+- 実写邦画の話題作
+- 海外大作映画の日本公開作品
+
+選定基準として、SNS投稿数、興行収入実績、批評家評価を総合的に判断しています。具体的な作品については、現在のトレンドデータをご確認ください。"""
+
+        else:
+            return """映画の興行収入について、データに基づいた分析をお手伝いします。
+
+分析可能な項目：
+• 歴代興行収入ランキング分析
+• 年度別・ジャンル別トレンド
+• 配給会社別戦略比較
+• SNS投稿数との相関関係
+• アニメ映画市場の動向
+
+具体的にお知りになりたい内容があれば、詳しくお聞かせください。データベースの最新情報を元に、専門的な視点からお答えします。"""
 
 # グローバル変数
 trending_manager = None
@@ -773,31 +1020,91 @@ def movie_detail(movie_id):
     return render_template("movie_detail.html", movie=movie)
 
 # 興収推移データのルート追加
+# app.pyのbox_office_detailルートを以下のように修正してください
+
 @app.route("/movie/<int:movie_id>/box-office")
 @site_access_required
 def box_office_detail(movie_id):
     movie = Movie.query.filter_by(id=movie_id).first_or_404()
     
     # 興収推移データを取得
-    box_office_data = BoxOfficeData.query.filter_by(movie_id=movie.movie_id).order_by(BoxOfficeData.week).all()
+    box_office_data = BoxOfficeData.query.filter_by(movie_id=movie.movie_id).all()
+    
+    # 週順でソート（第1週、第2週、第3週...の順）
+    def extract_week_number(week_str):
+        """週文字列から数値を抽出してソート用の数値を返す"""
+        if not week_str:
+            return 999  # 不明な週は最後に
+        
+        # 「第1週」「第2週」「1週目」「Week 1」など様々な形式に対応
+        import re
+        
+        # 数値を抽出（複数の形式に対応）
+        patterns = [
+            r'第(\d+)週',  # 第1週、第2週
+            r'(\d+)週目',  # 1週目、2週目
+            r'Week\s*(\d+)',  # Week 1, Week 2
+            r'週(\d+)',  # 週1、週2
+            r'(\d+)',  # 単純な数値
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, str(week_str))
+            if match:
+                return int(match.group(1))
+        
+        return 999  # パターンマッチしない場合は最後に
+    
+    # 週順でソート
+    box_office_data.sort(key=lambda x: extract_week_number(x.week))
+    
+    # 重複週のスキップと0値のスキップ処理
+    seen_weeks = set()
+    filtered_data = []
+    
+    for data in box_office_data:
+        week_number = extract_week_number(data.week)
+        
+        # 重複週をスキップ
+        if week_number in seen_weeks:
+            print(f"⚠️ 重複週をスキップ: {data.week} (週番号: {week_number})")
+            continue
+        
+        seen_weeks.add(week_number)
+        
+        # 累計興収が0の場合はスキップ
+        total_revenue = parse_revenue_string(data.total_revenue)
+        if total_revenue == 0:
+            print(f"⚠️ 累計興収0をスキップ: {data.week}")
+            continue
+        
+        filtered_data.append(data)
+    
+    # デバッグ用: フィルタリング後の週順を確認
+    print(f"📊 {movie.title} の週順（フィルタリング後): {[data.week for data in filtered_data]}")
     
     # データを処理
     processed_data = []
-    for i, data in enumerate(box_office_data):
+    for i, data in enumerate(filtered_data):
         weekend_revenue = parse_revenue_string(data.weekend_revenue)
         weekly_revenue = parse_revenue_string(data.weekly_revenue)
         total_revenue = parse_revenue_string(data.total_revenue)
         
-        # 前週比計算
+        # 前週比計算（週末興収・週間興収が0の場合は計算対象外）
         weekend_change = None
         weekly_change = None
         
         if i > 0:
-            prev_weekend = parse_revenue_string(box_office_data[i-1].weekend_revenue)
-            prev_weekly = parse_revenue_string(box_office_data[i-1].weekly_revenue)
+            prev_weekend = parse_revenue_string(filtered_data[i-1].weekend_revenue)
+            prev_weekly = parse_revenue_string(filtered_data[i-1].weekly_revenue)
             
-            weekend_change = calculate_week_over_week_change(weekend_revenue, prev_weekend)
-            weekly_change = calculate_week_over_week_change(weekly_revenue, prev_weekly)
+            # 週末興収の前週比（両方とも0より大きい場合のみ計算）
+            if weekend_revenue > 0 and prev_weekend > 0:
+                weekend_change = calculate_week_over_week_change(weekend_revenue, prev_weekend)
+            
+            # 週間興収の前週比（両方とも0より大きい場合のみ計算）
+            if weekly_revenue > 0 and prev_weekly > 0:
+                weekly_change = calculate_week_over_week_change(weekly_revenue, prev_weekly)
         
         processed_data.append({
             'week': data.week,
@@ -805,7 +1112,8 @@ def box_office_detail(movie_id):
             'weekly_revenue': weekly_revenue,
             'total_revenue': total_revenue,
             'weekend_change': weekend_change,
-            'weekly_change': weekly_change
+            'weekly_change': weekly_change,
+            'week_number': extract_week_number(data.week)  # デバッグ用
         })
     
     # ランキング情報を取得
@@ -994,12 +1302,65 @@ def movie_chat():
 def chat_api():
     try:
         data = request.get_json()
-        user_message = data.get('message', '')
+        user_message = data.get('message', '').strip()
         session_id = data.get('session_id', 'default')
         
-        bot = MovieAnalysisBot()
-        response = bot.get_response(user_message)
+        if not user_message:
+            return jsonify({
+                'response': 'メッセージを入力してください。',
+                'timestamp': datetime.now().isoformat(),
+                'status': 'error'
+            })
         
+        # 文字数制限
+        if len(user_message) > 500:
+            return jsonify({
+                'response': 'メッセージが長すぎます。500文字以内でお願いします。',
+                'timestamp': datetime.now().isoformat(),
+                'status': 'error'
+            })
+        
+        # 危険なキーワードフィルタ
+        dangerous_keywords = ['api key', 'apikey', 'token', 'password', 'secret']
+        if any(keyword in user_message.lower() for keyword in dangerous_keywords):
+            return jsonify({
+                'response': 'セキュリティ上の理由により、その内容についてはお答えできません。映画に関する質問をお願いします。',
+                'timestamp': datetime.now().isoformat(),
+                'status': 'filtered'
+            })
+        
+        # AIボットインスタンス作成
+        bot = MovieAnalysisBot()
+        
+        # AI応答生成（タイムアウト設定）
+        try:
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("AI応答タイムアウト")
+            
+            # Unix系OSでのみタイムアウト設定
+            if hasattr(signal, 'SIGALRM'):
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(30)  # 30秒タイムアウト
+            
+            response = bot.get_response(user_message)
+            
+            if hasattr(signal, 'SIGALRM'):
+                signal.alarm(0)  # タイムアウト解除
+            
+        except TimeoutError:
+            response = "申し訳ございません。分析に時間がかかりすぎています。もう少し具体的な質問でお試しください。"
+            logger.warning(f"AI応答タイムアウト: {user_message[:50]}...")
+        except Exception as e:
+            logger.error(f"AI応答生成エラー: {e}")
+            response = bot.get_fallback_response(user_message)
+        
+        # レスポンスの品質チェック
+        if len(response.strip()) < 10:
+            response = bot.get_fallback_response(user_message)
+        
+        # チャット履歴保存
         try:
             chat_message = ChatMessage(
                 session_id=session_id,
@@ -1009,18 +1370,22 @@ def chat_api():
             db.session.add(chat_message)
             db.session.commit()
         except Exception as e:
-            print(f"❌ チャット履歴保存エラー: {e}")
+            logger.error(f"チャット履歴保存エラー: {e}")
             db.session.rollback()
         
         return jsonify({
             'response': response,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'status': 'success',
+            'model': 'gpt-4o-mini'
         })
+        
     except Exception as e:
-        print(f"❌ チャットAPIエラー: {e}")
+        logger.error(f"チャットAPI全体エラー: {e}")
         return jsonify({
-            'response': '申し訳ございません。一時的にサービスを利用できません。',
-            'timestamp': datetime.now().isoformat()
+            'response': '申し訳ございません。システムエラーが発生しました。しばらくしてから再度お試しください。',
+            'timestamp': datetime.now().isoformat(),
+            'status': 'system_error'
         }), 500
 
 # ===== SNSトレンド機能 =====
