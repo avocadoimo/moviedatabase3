@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} - 興行収入推移データ{% endblock %}
+
+{% block head %}
+<style>
+    .box-office-container {
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        padding: 30px;
+        margin: auto;
+        max-width: 1000px;
+    }
+
+    .poster-img {
+        display: block;
+        max-width: 300px;
+        height: auto;
+        margin: 0 auto 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    }
+
+    .back-button {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 6px 14px;
+        background-color: #1a73e8;
+        color: #fff;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.9em;
+    }
+
+    .back-button:hover {
+        background-color: #1558b0;
+    }
+
+    .section {
+        margin-bottom: 30px;
+    }
+
+    .section h2 {
+        margin: 0 0 15px;
+        font-size: 1.3em;
+        color: #333;
+        border-bottom: 2px solid #1a73e8;
+        padding-bottom: 8px;
+    }
+
+    /* グラフエリア */
+    .chart-container {
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        height: 400px;
+        position: relative;
+    }
+
+    .chart-title {
+        text-align: center;
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    #revenueChart {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* テーブルスタイル */
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        background: linear-gradient(135deg, #1a73e8, #1558b0);
+        color: white;
+        padding: 15px 12px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .data-table td {
+        padding: 12px;
+        text-align: center;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 14px;
+    }
+
+    .data-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .revenue-cell {
+        font-weight: 600;
+        color: #2e7d32;
+    }
+
+    .change-positive {
+        color: #4caf50;
+        font-weight: 600;
+    }
+
+    .change-negative {
+        color: #f44336;
+        font-weight: 600;
+    }
+
+    .change-neutral {
+        color: #666;
+    }
+
+    /* ランキングセクション */
+    .ranking-container {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .ranking-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .ranking-table th {
+        background: linear-gradient(135deg, #34a853, #2d8f47);
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .ranking-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .ranking-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .ranking-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .rank-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        min-width: 30px;
+        text-align: center;
+    }
+
+    .rank-top10 {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #333;
+    }
+
+    .rank-top50 {
+        background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+        color: #333;
+    }
+
+    .rank-top100 {
+        background: linear-gradient(135deg, #cd7f32, #deb887);
+        color: white;
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 767px) {
+        .box-office-container {
+            padding: 20px;
+        }
+
+        .poster-img {
+            max-width: 250px;
+        }
+
+        .chart-container {
+            height: 300px;
+            padding: 15px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+
+        .ranking-table th,
+        .ranking-table td {
+            padding: 10px 8px;
+        }
+
+        .section h2 {
+            font-size: 1.1em;
+        }
+    }
+
+    /* アニメーション */
+    .section {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .section:nth-child(1) { animation-delay: 0.1s; }
+    .section:nth-child(2) { animation-delay: 0.2s; }
+    .section:nth-child(3) { animation-delay: 0.3s; }
+    .section:nth-child(4) { animation-delay: 0.4s; }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="box-office-container">
+    <a class="back-button" href="{{ url_for('movie_detail', movie_id=movie.id) }}">← 映画詳細に戻る</a>
+
+    <h1 style="text-align: center; margin-bottom: 20px;">{{ movie.title }}</h1>
+
+    {% if movie.movie_id %}
+        <img class="poster-img" src="{{ url_for('static', filename='posters/' ~ movie.movie_id|string ~ '.jpg') }}" alt="ポスター画像">
+    {% else %}
+        <p style="text-align: center;">ポスター画像がありません</p>
+    {% endif %}
+
+    {% if box_office_data %}
+        <!-- グラフ表示 -->
+        <div class="section">
+            <h2>📈 興行収入推移グラフ</h2>
+            <div class="chart-container">
+                <div class="chart-title">累計興行収入の推移</div>
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- テーブル表示 -->
+        <div class="section">
+            <h2>📊 週別興行収入データ</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>公開週</th>
+                            <th>週末興収<br><small>(億円)</small></th>
+                            <th>週末前週比</th>
+                            <th>週間興収<br><small>(億円)</small></th>
+                            <th>週間前週比</th>
+                            <th>累計興収<br><small>(億円)</small></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in box_office_data %}
+                        <tr>
+                            <td><strong>{{ data.week }}</strong></td>
+                            <td class="revenue-cell">{{ "%.1f"|format(data.weekend_revenue) }}</td>
+                            <td class="{% if data.weekend_change %}{% if data.weekend_change > 0 %}change-positive{% elif data.weekend_change < 0 %}change-negative{% else %}change-neutral{% endif %}{% else %}change-neutral{% endif %}">
+                                {% if data.weekend_change is not none %}
+                                    {% if data.weekend_change > 0 %}+{% endif %}{{ "%.1f"|format(data.weekend_change) }}%
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="revenue-cell">{{ "%.1f"|format(data.weekly_revenue) }}</td>
+                            <td class="{% if data.weekly_change %}{% if data.weekly_change > 0 %}change-positive{% elif data.weekly_change < 0 %}change-negative{% else %}change-neutral{% endif %}{% else %}change-neutral{% endif %}">
+                                {% if data.weekly_change is not none %}
+                                    {% if data.weekly_change > 0 %}+{% endif %}{{ "%.1f"|format(data.weekly_change) }}%
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="revenue-cell">{{ "%.1f"|format(data.total_revenue) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ランキング表示 -->
+        {% if rankings %}
+        <div class="section">
+            <h2>🏆 興行収入ランキング</h2>
+            <div class="ranking-container">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>カテゴリ</th>
+                            <th>順位</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if rankings.all %}
+                        <tr>
+                            <td><strong>📊 全作品中</strong></td>
+                            <td>
+                                <span class="rank-badge {% if rankings.all <= 10 %}rank-top10{% elif rankings.all <= 50 %}rank-top50{% elif rankings.all <= 100 %}rank-top100{% endif %}">
+                                    {{ rankings.all }}位
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if rankings.year %}
+                        <tr>
+                            <td><strong>📅 {{ movie.year }}年公開作品中</strong></td>
+                            <td>
+                                <span class="rank-badge {% if rankings.year <= 10 %}rank-top10{% elif rankings.year <= 50 %}rank-top50{% elif rankings.year <= 100 %}rank-top100{% endif %}">
+                                    {{ rankings.year }}位
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if rankings.category %}
+                        <tr>
+                            <td><strong>🎬 {{ movie.category }}中</strong></td>
+                            <td>
+                                <span class="rank-badge {% if rankings.category <= 10 %}rank-top10{% elif rankings.category <= 50 %}rank-top50{% elif rankings.category <= 100 %}rank-top100{% endif %}">
+                                    {{ rankings.category }}位
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if rankings.anime %}
+                        <tr>
+                            <td><strong>🎨 アニメ作品中</strong></td>
+                            <td>
+                                <span class="rank-badge {% if rankings.anime <= 10 %}rank-top10{% elif rankings.anime <= 50 %}rank-top50{% elif rankings.anime <= 100 %}rank-top100{% endif %}">
+                                    {{ rankings.anime }}位
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="section">
+            <h2>⚠️ データなし</h2>
+            <p style="text-align: center; color: #666; padding: 40px;">
+                この映画の興行収入推移データは現在利用できません。
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if box_office_data %}
+    // グラフ用データの準備
+    const chartData = {
+        labels: [
+            {% for data in box_office_data %}
+            "{{ data.week }}"{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        datasets: [{
+            label: '累計興行収入 (億円)',
+            data: [
+                {% for data in box_office_data %}
+                {{ data.total_revenue }}{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            borderColor: '#1a73e8',
+            backgroundColor: 'rgba(26, 115, 232, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#1a73e8',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+        }]
+    };
+
+    // Chart.jsの設定
+    const config = {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#1a73e8',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return '累計興収: ' + context.parsed.y.toFixed(1) + '億円';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '公開週',
+                        color: '#666',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: '累計興行収入 (億円)',
+                        color: '#666',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(1) + '億円';
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            elements: {
+                point: {
+                    hoverBackgroundColor: '#1558b0'
+                }
+            }
+        }
+    };
+
+    // グラフを描画
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(ctx, config);
+    {% endif %}
+
+    // ページ読み込み時のスクロール位置調整
+    window.addEventListener("load", function() {
+        window.scrollTo(0, 165);
+    });
+
+    // テーブル行のホバーエフェクト
+    const tableRows = document.querySelectorAll('.data-table tbody tr, .ranking-table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.01)';
+            this.style.transition = 'transform 0.2s ease';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+
+    // ランキングバッジのアニメーション
+    const rankBadges = document.querySelectorAll('.rank-badge');
+    rankBadges.forEach((badge, index) => {
+        badge.style.opacity = '0';
+        badge.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            badge.style.transition = 'all 0.5s ease';
+            badge.style.opacity = '1';
+            badge.style.transform = 'scale(1)';
+        }, index * 200);
+    });
+});
+</script>
+
+{% endblock %}

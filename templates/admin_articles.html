@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}記事管理 - 映画データベース{% endblock %}
+
+{% block head %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: var(--card-background);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+    }
+
+    .admin-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .admin-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-success {
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-danger {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .search-filters {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding: 20px;
+        background: var(--card-background);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+    }
+
+    .search-input {
+        padding: 10px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .category-select {
+        padding: 10px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+    }
+
+    .articles-table {
+        background: var(--card-background);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        background: var(--primary-color);
+        color: white;
+        padding: 16px;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .table td {
+        padding: 16px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: top;
+    }
+
+    .table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .article-title {
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 4px;
+    }
+
+    .article-excerpt {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+
+    .article-meta {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .badge-featured {
+        background: var(--warning-color);
+        color: #333;
+    }
+
+    .badge-category {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        gap: 8px;
+    }
+
+    .pagination a, .pagination span {
+        padding: 8px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .pagination a {
+        background: var(--card-background);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+    }
+
+    .pagination .current {
+        background: var(--primary-color);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1 class="admin-title">📋 記事管理</h1>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">
+                🏠 ダッシュボード
+            </a>
+            <a href="{{ url_for('admin_create_article') }}" class="btn btn-success">
+                ➕ 新規記事作成
+            </a>
+        </div>
+    </div>
+
+    <!-- 検索・フィルター -->
+    <form method="get" class="search-filters">
+        <input type="text" name="search" value="{{ search_term }}" 
+               placeholder="記事を検索..." class="search-input">
+        
+        <select name="category" class="category-select">
+            <option value="">すべてのカテゴリ</option>
+            {% for cat in categories %}
+            <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>
+                {{ cat }}
+            </option>
+            {% endfor %}
+        </select>
+        
+        <button type="submit" class="btn btn-primary">🔍 検索</button>
+    </form>
+
+    <!-- 記事一覧テーブル -->
+    <div class="articles-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>記事</th>
+                    <th>作成者</th>
+                    <th>カテゴリ</th>
+                    <th>公開日</th>
+                    <th>閲覧数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles.items %}
+                <tr>
+                    <td>
+                        <div class="article-title">
+                            {{ article.title }}
+                            {% if article.is_featured %}
+                            <span class="badge badge-featured">注目</span>
+                            {% endif %}
+                        </div>
+                        <div class="article-excerpt">{{ article.excerpt[:100] }}...</div>
+                    </td>
+                    <td>{{ article.author }}</td>
+                    <td>
+                        <span class="badge badge-category">{{ article.category }}</span>
+                    </td>
+                    <td class="article-meta">
+                        {{ article.published_date.strftime('%Y/%m/%d') }}
+                    </td>
+                    <td class="article-meta">{{ article.view_count }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('admin_edit_article', article_id=article.id) }}" 
+                               class="btn btn-primary btn-sm">✏️ 編集</a>
+                            <button onclick="toggleFeatured({{ article.id }})" 
+                                    class="btn btn-sm" 
+                                    style="background: var(--warning-color); color: #333;">
+                                {% if article.is_featured %}★{% else %}☆{% endif %}
+                            </button>
+                            <button onclick="deleteArticle({{ article.id }})" 
+                                    class="btn btn-danger btn-sm">🗑️ 削除</button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        📝 記事がありません。新しい記事を作成しましょう！
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ページネーション -->
+    {% if articles.pages > 1 %}
+    <div class="pagination">
+        {% if articles.has_prev %}
+        <a href="{{ url_for('admin_articles', page=articles.prev_num, 
+                           category=current_category, search=search_term) }}">← 前</a>
+        {% endif %}
+        
+        {% for page_num in articles.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != articles.page %}
+                <a href="{{ url_for('admin_articles', page=page_num, 
+                                   category=current_category, search=search_term) }}">{{ page_num }}</a>
+                {% else %}
+                <span class="current">{{ page_num }}</span>
+                {% endif %}
+            {% else %}
+                <span>...</span>
+            {% endif %}
+        {% endfor %}
+        
+        {% if articles.has_next %}
+        <a href="{{ url_for('admin_articles', page=articles.next_num, 
+                           category=current_category, search=search_term) }}">次 →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// 注目記事の切り替え
+function toggleFeatured(articleId) {
+    console.log('注目記事切り替え:', articleId);
+    
+    fetch(`/admin/articles/${articleId}/toggle-featured`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('通信エラーが発生しました: ' + error.message);
+    });
+}
+
+// 記事削除
+function deleteArticle(articleId) {
+    console.log('記事削除開始:', articleId);
+    
+    if (!articleId) {
+        alert('記事IDが不正です');
+        return;
+    }
+    
+    if (confirm('本当にこの記事を削除しますか？この操作は取り消せません。')) {
+        console.log('削除確認OK、API呼び出し開始');
+        
+        const deleteUrl = `/admin/articles/${articleId}/delete`;
+        console.log('削除URL:', deleteUrl);
+        
+        fetch(deleteUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            console.log('削除レスポンス status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('削除レスポンス data:', data);
+            
+            if (data.success) {
+                alert('削除成功: ' + data.message);
+                console.log('ページリロード開始');
+                location.reload();
+            } else {
+                alert('削除失敗: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('削除エラー:', error);
+            alert('削除時に通信エラーが発生しました: ' + error.message);
+        });
+    } else {
+        console.log('削除キャンセル');
+    }
+}
+
+// ページ読み込み時のデバッグ情報
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('記事管理ページ読み込み完了');
+    
+    // 削除ボタンの確認
+    const deleteButtons = document.querySelectorAll('button[onclick^="deleteArticle"]');
+    console.log('削除ボタン数:', deleteButtons.length);
+    
+    deleteButtons.forEach((button, index) => {
+        console.log(`削除ボタン ${index + 1}:`, button.onclick.toString());
+    });
+});
+</script>
+{% endblock %}

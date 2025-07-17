@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - 映画データベース{% endblock %}
+
+{% block head %}
+<style>
+    .article-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .article-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 30px;
+        background: linear-gradient(135deg, var(--primary-color), #1558b0);
+        color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+    }
+
+    .article-title {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 0 0 16px;
+        line-height: 1.3;
+    }
+
+    .article-meta {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        flex-wrap: wrap;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .article-badge {
+        background: var(--warning-color);
+        color: #333;
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 16px;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: var(--card-background);
+        color: var(--text-color);
+        text-decoration: none;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        margin-bottom: 20px;
+        transition: var(--transition);
+        border: 1px solid var(--border-color);
+    }
+
+    .back-link:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .article-content {
+        background: var(--card-background);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 40px;
+        margin-bottom: 40px;
+        line-height: 1.8;
+        font-size: 16px;
+    }
+
+    .article-content h1,
+    .article-content h2,
+    .article-content h3 {
+        color: var(--text-color);
+        margin-top: 32px;
+        margin-bottom: 16px;
+        font-weight: 600;
+    }
+
+    .article-content h1 {
+        font-size: 28px;
+        border-bottom: 3px solid var(--primary-color);
+        padding-bottom: 8px;
+    }
+
+    .article-content h2 {
+        font-size: 24px;
+        border-left: 4px solid var(--primary-color);
+        padding-left: 16px;
+    }
+
+    .article-content h3 {
+        font-size: 20px;
+        color: var(--primary-color);
+    }
+
+    .article-content p {
+        margin-bottom: 16px;
+        color: var(--text-color);
+    }
+
+    .article-content ul, 
+    .article-content ol {
+        margin-bottom: 16px;
+        padding-left: 24px;
+    }
+
+    .article-content li {
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+
+    .article-content blockquote {
+        border-left: 4px solid var(--primary-color);
+        background: #f8f9fa;
+        padding: 16px 24px;
+        margin: 24px 0;
+        font-style: italic;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .article-content code {
+        background: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        color: var(--accent-color);
+    }
+
+    .article-content pre {
+        background: #f8f9fa;
+        padding: 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 16px 0;
+        border: 1px solid var(--border-color);
+    }
+
+    .article-tags {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .tags-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+    }
+
+    .tag-list {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tag-item {
+        background: var(--primary-color);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .tag-item:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .related-articles {
+        background: var(--card-background);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 30px;
+        margin-top: 40px;
+    }
+
+    .related-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 20px;
+        text-align: center;
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 12px;
+    }
+
+    .related-list {
+        display: grid;
+        gap: 16px;
+    }
+
+    .related-item {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .related-item:hover {
+        border-color: var(--primary-color);
+        background: #f8f9fa;
+        transform: translateY(-1px);
+    }
+
+    .related-icon {
+        font-size: 32px;
+        color: var(--primary-color);
+        flex-shrink: 0;
+    }
+
+    .related-content {
+        flex: 1;
+    }
+
+    .related-item-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 4px;
+    }
+
+    .related-item-excerpt {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+
+    .related-item-meta {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 8px;
+    }
+
+    .share-section {
+        background: var(--card-background);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 24px;
+        text-align: center;
+        margin-top: 30px;
+    }
+
+    .share-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 16px;
+    }
+
+    .share-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .share-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .share-twitter {
+        background: #1da1f2;
+        color: white;
+    }
+
+    .share-facebook {
+        background: #4267b2;
+        color: white;
+    }
+
+    .share-line {
+        background: #00b900;
+        color: white;
+    }
+
+    .share-copy {
+        background: var(--text-secondary);
+        color: white;
+    }
+
+    .share-btn:hover {
+        transform: translateY(-2px);
+        opacity: 0.9;
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 767px) {
+        .article-container {
+            padding: 16px;
+        }
+
+        .article-title {
+            font-size: 24px;
+        }
+
+        .article-meta {
+            gap: 16px;
+            font-size: 12px;
+        }
+
+        .article-content {
+            padding: 24px;
+            font-size: 15px;
+        }
+
+        .article-content h1 {
+            font-size: 22px;
+        }
+
+        .article-content h2 {
+            font-size: 20px;
+        }
+
+        .article-content h3 {
+            font-size: 18px;
+        }
+
+        .related-item {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .share-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .share-btn {
+            width: 200px;
+            justify-content: center;
+        }
+    }
+
+    /* ダークモード */
+    @media (prefers-color-scheme: dark) {
+        .article-content blockquote,
+        .article-content code,
+        .article-content pre {
+            background: #2a2a2a;
+        }
+
+        .related-item:hover {
+            background: #333;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="article-container">
+    <!-- 戻るリンク -->
+    <a href="{{ url_for('articles') }}" class="back-link">
+        ← 記事一覧に戻る
+    </a>
+
+    <!-- 記事ヘッダー -->
+    <div class="article-header">
+        {% if article.is_featured %}
+        <div class="article-badge">⭐ 注目記事</div>
+        {% endif %}
+        
+        <h1 class="article-title">{{ article.title }}</h1>
+        
+        <div class="article-meta">
+            <div class="meta-item">
+                <span>👤</span>
+                <span>{{ article.author or '編集部' }}</span>
+            </div>
+            <div class="meta-item">
+                <span>📅</span>
+                <span>{{ article.published_date.strftime('%Y年%m月%d日') }}</span>
+            </div>
+            {% if article.category %}
+            <div class="meta-item">
+                <span>📁</span>
+                <span>{{ article.category }}</span>
+            </div>
+            {% endif %}
+            <div class="meta-item">
+                <span>👁</span>
+                <span>{{ article.view_count }} 回閲覧</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 記事内容 -->
+    <div class="article-content">
+        {{ article.content | replace('\n', '<br>') | safe }}
+        
+        <!-- タグ表示 -->
+        {% if article.tags %}
+        <div class="article-tags">
+            <div class="tags-label">🏷️ タグ</div>
+            <div class="tag-list">
+                {% for tag in article.tags.split(',') %}
+                <a href="{{ url_for('articles', search=tag.strip()) }}" class="tag-item">
+                    {{ tag.strip() }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- シェアボタン -->
+    <div class="share-section">
+        <div class="share-title">📢 この記事をシェア</div>
+        <div class="share-buttons">
+            <a href="https://twitter.com/intent/tweet?text={{ article.title | urlencode }}&url={{ request.url | urlencode }}" 
+               target="_blank" class="share-btn share-twitter">
+                🐦 Twitter
+            </a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.url | urlencode }}" 
+               target="_blank" class="share-btn share-facebook">
+                📘 Facebook
+            </a>
+            <a href="https://social-plugins.line.me/lineit/share?url={{ request.url | urlencode }}" 
+               target="_blank" class="share-btn share-line">
+                💬 LINE
+            </a>
+            <button onclick="copyToClipboard()" class="share-btn share-copy">
+                📋 URLコピー
+            </button>
+        </div>
+    </div>
+
+    <!-- 関連記事 -->
+    {% if related_articles %}
+    <div class="related-articles">
+        <h2 class="related-title">📚 関連記事</h2>
+        <div class="related-list">
+            {% for related in related_articles %}
+            <a href="{{ url_for('article_detail', article_id=related.id) }}" class="related-item">
+                <div class="related-icon">
+                    {% if related.category == '映画分析' %}🎬
+                    {% elif related.category == '興行収入' %}💰
+                    {% elif related.category == 'トレンド' %}📈
+                    {% elif related.category == 'インタビュー' %}🎤
+                    {% elif related.category == 'レビュー' %}⭐
+                    {% else %}📄{% endif %}
+                </div>
+                <div class="related-content">
+                    <div class="related-item-title">{{ related.title }}</div>
+                    <div class="related-item-excerpt">{{ related.excerpt[:100] }}...</div>
+                    <div class="related-item-meta">
+                        {{ related.author }} | {{ related.published_date.strftime('%Y/%m/%d') }} | {{ related.view_count }} 回閲覧
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// URLをクリップボードにコピー
+function copyToClipboard() {
+    const url = window.location.href;
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function() {
+            alert('URLをクリップボードにコピーしました！');
+        }).catch(function(err) {
+            console.error('コピーに失敗しました: ', err);
+            fallbackCopyTextToClipboard(url);
+        });
+    } else {
+        fallbackCopyTextToClipboard(url);
+    }
+}
+
+// フォールバック用コピー機能
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            alert('URLをクリップボードにコピーしました！');
+        } else {
+            alert('コピーに失敗しました。手動でURLをコピーしてください。');
+        }
+    } catch (err) {
+        console.error('Fallback: コピーに失敗しました: ', err);
+        alert('コピーに失敗しました。手動でURLをコピーしてください。');
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// 記事の閲覧を追跡（既にサーバー側で処理済み）
+document.addEventListener('DOMContentLoaded', function() {
+    // 記事の読了時間を計測（オプション）
+    const startTime = Date.now();
+    
+    window.addEventListener('beforeunload', function() {
+        const readTime = Math.round((Date.now() - startTime) / 1000);
+        
+        // 読了時間が30秒以上の場合のみ送信
+        if (readTime >= 30) {
+            navigator.sendBeacon('/api/track-read-time', JSON.stringify({
+                article_id: {{ article.id }},
+                read_time: readTime
+            }));
+        }
+    });
+});
+
+// スムーズスクロール
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+    });
+});
+
+// 画像の遅延読み込み（記事内の画像がある場合）
+if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy');
+                    imageObserver.unobserve(img);
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('img[data-src]').forEach(img => {
+        imageObserver.observe(img);
+    });
+}
+</script>
+{% endblock %}

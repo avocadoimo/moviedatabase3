@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if article %}記事編集{% else %}新規記事作成{% endif %} - 映画データベース
+{% endblock %}
+
+{% block head %}
+<style>
+    .admin-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: var(--card-background);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+    }
+
+    .admin-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-success {
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    .article-form {
+        background: var(--card-background);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        resize: vertical;
+        min-height: 120px;
+        font-family: inherit;
+        transition: var(--transition);
+        box-sizing: border-box;
+    }
+
+    .form-textarea.content {
+        min-height: 300px;
+    }
+
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+        transition: var(--transition);
+        box-sizing: border-box;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .form-check-input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: var(--text-color);
+        cursor: pointer;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .error-message {
+        background: #ffebee;
+        border: 1px solid #f44336;
+        color: #d32f2f;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .form-help {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    @media (max-width: 767px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1 class="admin-title">
+            {% if article %}✏️ 記事編集{% else %}➕ 新規記事作成{% endif %}
+        </h1>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_articles') }}" class="btn btn-primary">
+                📋 記事一覧に戻る
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" class="article-form">
+        <div class="form-group">
+            <label class="form-label" for="title">記事タイトル *</label>
+            <input type="text" id="title" name="title" class="form-input" 
+                   value="{{ article.title if article else (form_data.title if form_data else '') }}" 
+                   required placeholder="映画に関する記事のタイトルを入力してください">
+            <div class="form-help">SEOを考慮して、検索されやすいタイトルを設定しましょう</div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="author">作成者</label>
+                <input type="text" id="author" name="author" class="form-input" 
+                       value="{{ article.author if article else (form_data.author if form_data else '') }}" 
+                       placeholder="記事の作成者名">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="category">カテゴリ</label>
+                <select id="category" name="category" class="form-select">
+                    <option value="">カテゴリを選択</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" 
+                            {% if article and article.category == cat %}selected{% endif %}
+                            {% if form_data and form_data.category == cat %}selected{% endif %}>
+                        {{ cat }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="excerpt">記事の抜粋</label>
+            <textarea id="excerpt" name="excerpt" class="form-textarea" 
+                      placeholder="記事の要約を入力してください（空白の場合は自動生成されます）">{{ article.excerpt if article else (form_data.excerpt if form_data else '') }}</textarea>
+            <div class="form-help">記事一覧で表示される要約文です。150-200文字程度がおすすめです</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="content">記事内容 *</label>
+            <textarea id="content" name="content" class="form-textarea content" 
+                      required placeholder="記事の本文を入力してください">{{ article.content if article else (form_data.content if form_data else '') }}</textarea>
+            <div class="form-help">記事の本文を詳しく入力してください</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="tags">タグ</label>
+            <input type="text" id="tags" name="tags" class="form-input" 
+                   value="{{ article.tags if article else (form_data.tags if form_data else '') }}" 
+                   placeholder="タグをカンマ区切りで入力（例: アニメ,興行収入,トレンド）">
+            <div class="form-help">記事に関連するキーワードをカンマで区切って入力してください</div>
+        </div>
+
+        <div class="form-group">
+            <div class="form-check">
+                <input type="checkbox" id="is_featured" name="is_featured" class="form-check-input"
+                       {% if article and article.is_featured %}checked{% endif %}
+                       {% if form_data and form_data.is_featured %}checked{% endif %}>
+                <label class="form-check-label" for="is_featured">
+                    ⭐ 注目記事として表示する
+                </label>
+            </div>
+            <div class="form-help">チェックすると記事一覧のトップに表示されます</div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin_articles') }}" class="btn" style="background: #666; color: white;">
+                キャンセル
+            </a>
+            <button type="submit" class="btn btn-success">
+                {% if article %}💾 記事を更新{% else %}📝 記事を作成{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// 文字数カウンター
+function addCharacterCounter(elementId, maxLength) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    const counterDiv = document.createElement('div');
+    counterDiv.className = 'form-help';
+    counterDiv.style.textAlign = 'right';
+    element.parentNode.appendChild(counterDiv);
+    
+    function updateCounter() {
+        const length = element.value.length;
+        counterDiv.textContent = `${length}${maxLength ? '/' + maxLength : ''}文字`;
+        
+        if (maxLength && length > maxLength) {
+            counterDiv.style.color = 'var(--accent-color)';
+        } else {
+            counterDiv.style.color = 'var(--text-secondary)';
+        }
+    }
+    
+    element.addEventListener('input', updateCounter);
+    updateCounter();
+}
+
+// 文字数カウンターを追加
+document.addEventListener('DOMContentLoaded', function() {
+    addCharacterCounter('title', 100);
+    addCharacterCounter('excerpt', 300);
+    addCharacterCounter('content');
+    
+    // 自動保存機能（オプション）
+    const form = document.querySelector('.article-form');
+    if (!form) return;
+    
+    let autoSaveTimer;
+    
+    function autoSave() {
+        const formData = new FormData(form);
+        const title = formData.get('title');
+        
+        if (title) {
+            localStorage.setItem('article_draft', JSON.stringify({
+                title: formData.get('title'),
+                content: formData.get('content'),
+                excerpt: formData.get('excerpt'),
+                author: formData.get('author'),
+                category: formData.get('category'),
+                tags: formData.get('tags'),
+                timestamp: new Date().toISOString()
+            }));
+        }
+    }
+    
+    // 入力時の自動保存
+    form.addEventListener('input', function() {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(autoSave, 3000); // 3秒後に保存
+    });
+    
+    // 送信時に下書きを削除
+    form.addEventListener('submit', function() {
+        localStorage.removeItem('article_draft');
+    });
+});
+</script>
+{% endblock %}
