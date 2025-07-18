@@ -125,6 +125,8 @@ class Article(db.Model):
     published_date = db.Column(db.DateTime, default=datetime.utcnow)
     view_count = db.Column(db.Integer, default=0)
     is_featured = db.Column(db.Boolean, default=False)
+    thumbnail_url = db.Column(db.String(300))
+    content_html = db.Column(db.Text)  # リッチテキストコンテンツ用
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
@@ -766,6 +768,16 @@ def get_box_office_rankings(movie):
         print(f"❌ ランキング取得エラー: {e}")
     
     return rankings
+
+class RankingQuery(db.Model):
+    __tablename__ = 'ranking_queries'
+    id = db.Column(db.Integer, primary_key=True)
+    query_name = db.Column(db.String(200), nullable=False)
+    category_type = db.Column(db.String(50), nullable=False)  # 'director', 'actor', 'genre', etc.
+    search_value = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    view_count = db.Column(db.Integer, default=0)
 
 # ===== ルート定義 =====
 
@@ -2033,6 +2045,341 @@ def analytics():
                            bar_values=bar_values,
                            trend_labels=trend_labels,
                            trend_datasets=trend_datasets)
+
+@app.route("/ranking")
+@site_access_required
+def ranking():
+    """ランキングページ - ピックアップランキング表示"""
+    
+    # ピックアップランキング（3つのサンプル）
+    pickup_rankings = []
+    
+    try:
+        # 1. 宮崎駿監督作品ランキング
+        miyazaki_movies = Movie.query.filter(
+            Movie.director.contains('宮崎駿')
+        ).filter(
+            Movie.revenue.isnot(None)
+        ).order_by(Movie.revenue.desc()).limit(10).all()
+        
+        if miyazaki_movies:
+            pickup_rankings.append({
+                'title': '宮崎駿監督作品ランキング',
+                'description': 'スタジオジブリの巨匠による興行収入ランキング',
+                'movies': miyazaki_movies,
+                'query_type': 'director',
+                'query_value': '宮崎駿'
+            })
+        
+        # 2. アニメ映画ランキング
+        anime_movies = Movie.query.filter(
+            Movie.genre.contains('アニメ')
+        ).filter(
+            Movie.revenue.isnot(None)
+        ).order_by(Movie.revenue.desc()).limit(10).all()
+        
+        if anime_movies:
+            pickup_rankings.append({
+                'title': 'アニメ映画ランキング',
+                'description': '日本が誇るアニメーション作品の興行収入ランキング',
+                'movies': anime_movies,
+                'query_type': 'genre',
+                'query_value': 'アニメ'
+            })
+        
+        # 3. 2020年代映画ランキング
+        recent_movies = Movie.query.filter(
+            Movie.year >= 2020
+        ).filter(
+            Movie.revenue.isnot(None)
+        ).order_by(Movie.revenue.desc()).limit(10).all()
+        
+        if recent_movies:
+            pickup_rankings.append({
+                'title': '2020年代映画ランキング',
+                'description': '最新世代の大ヒット映画ランキング',
+                'movies': recent_movies,
+                'query_type': 'year',
+                'query_value': '2020年代'
+            })
+        
+    except Exception as e:
+        print(f"❌ ランキングデータ取得エラー: {e}")
+    
+    return render_template('ranking.html', pickup_rankings=pickup_rankings)
+
+@app.route("/ranking/search", methods=['GET', 'POST'])
+@site_access_required
+def ranking_search():
+    """ランキング検索・生成"""
+    
+    if request.method == 'POST':
+        category_type = request.form.get('category_type')
+        search_value = request.form.get('search_value', '').strip()
+        
+        if not category_type or not search_value:
+            return render_template('ranking_search.html', error="検索条件を入力してください")
+        
+        # ランキング生成
+        ranking_data = generate_ranking(category_type, search_value)
+        
+        if ranking_data:
+            return render_template('ranking_result.html', 
+                                 ranking_data=ranking_data,
+                                 category_type=category_type,
+                                 search_value=search_value)
+        else:
+            return render_template('ranking_search.html', 
+                                 error=f"「{search_value}」に関する映画が見つかりませんでした")
+    
+    return render_template('ranking_search.html')
+
+@app.route("/ranking/custom/<category_type>/<search_value>")
+@site_access_required
+def custom_ranking(category_type, search_value):
+    """カスタムランキング表示"""
+    
+    ranking_data = generate_ranking(category_type, search_value)
+    
+    if ranking_data:
+        return render_template('ranking_result.html', 
+                             ranking_data=ranking_data,
+                             category_type=category_type,
+                             search_value=search_value)
+    else:
+        return render_template('ranking_search.html', 
+                             error=f"「{search_value}」に関する映画が見つかりませんでした")
+
+def generate_ranking(category_type, search_value):
+    """ランキングデータ生成"""
+    try:
+        query = Movie.query.filter(Movie.revenue.isnot(None))
+        
+        if category_type == 'director':
+            query = query.filter(Movie.director.contains(search_value))
+            title = f"{search_value}監督作品ランキング"
+        elif category_type == 'actor':
+            query = query.filter(Movie.actor.contains(search_value))
+            title = f"{search_value}出演作品ランキング"
+        elif category_type == 'scriptwriter':
+            query = query.filter(Movie.scriptwriter.contains(search_value))
+            title = f"{search_value}脚本作品ランキング"
+        elif category_type == 'genre':
+            query = query.filter(Movie.genre.contains(search_value))
+            title = f"{search_value}映画ランキング"
+        elif category_type == 'distributor':
+            query = query.filter(Movie.distributor.contains(search_value))
+            title = f"{search_value}配給作品ランキング"
+        elif category_type == 'year':
+            try:
+                year_value = int(search_value)
+                query = query.filter(Movie.year == year_value)
+                title = f"{year_value}年公開映画ランキング"
+            except ValueError:
+                return None
+        elif category_type == 'freeword':
+            # フリーワード検索
+            query = query.filter(
+                db.or_(
+                    Movie.title.contains(search_value),
+                    Movie.director.contains(search_value),
+                    Movie.actor.contains(search_value),
+                    Movie.genre.contains(search_value),
+                    Movie.description.contains(search_value)
+                )
+            )
+            title = f"「{search_value}」関連映画ランキング"
+        else:
+            return None
+        
+        movies = query.order_by(Movie.revenue.desc()).limit(50).all()
+        
+        if not movies:
+            return None
+        
+        # 初週興収データがある場合は追加情報を取得
+        for movie in movies:
+            if movie.movie_id:
+                first_week_data = BoxOfficeData.query.filter_by(
+                    movie_id=movie.movie_id
+                ).filter(
+                    BoxOfficeData.week.in_(['第1週', '1週目', 'Week 1'])
+                ).first()
+                
+                movie.first_week_revenue = None
+                if first_week_data:
+                    try:
+                        movie.first_week_revenue = float(first_week_data.weekend_revenue or first_week_data.weekly_revenue or 0)
+                    except:
+                        movie.first_week_revenue = None
+        
+        return {
+            'title': title,
+            'description': f"{search_value}に関連する映画を興行収入順にランキング",
+            'movies': movies,
+            'total_count': len(movies)
+        }
+        
+    except Exception as e:
+        print(f"❌ ランキング生成エラー: {e}")
+        return None
+
+# アナリティクスページのルート
+@app.route("/analytics-new")
+@site_access_required
+def analytics_new():
+    """新しいアナリティクスページ"""
+    movies = Movie.query.filter(Movie.revenue.isnot(None)).order_by(Movie.title).all()
+    return render_template('analytics_new.html', movies=movies)
+
+@app.route("/api/analytics/compare", methods=['POST'])
+@site_access_required
+def analytics_compare():
+    """アナリティクス比較データAPI"""
+    
+    try:
+        data = request.get_json()
+        movie_titles = data.get('movie_titles', [])
+        comparison_type = data.get('type', 'revenue')  # 'revenue' or 'trend'
+        max_weeks = data.get('max_weeks', 50)
+        
+        if not movie_titles:
+            return jsonify({'error': 'No movies selected'})
+        
+        results = []
+        
+        for title in movie_titles[:10]:  # 最大10作品
+            movie = Movie.query.filter_by(title=title).first()
+            if not movie:
+                continue
+            
+            movie_data = {
+                'title': movie.title,
+                'revenue': movie.revenue or 0,
+                'year': movie.year,
+                'id': movie.id
+            }
+            
+            if comparison_type == 'trend' and movie.movie_id:
+                # 推移データを取得
+                box_office_data = BoxOfficeData.query.filter_by(
+                    movie_id=movie.movie_id
+                ).order_by(BoxOfficeData.id).limit(max_weeks).all()
+                
+                trend_data = []
+                for i, data in enumerate(box_office_data):
+                    try:
+                        revenue_value = float(data.total_revenue or 0)
+                        trend_data.append({
+                            'week': i + 1,
+                            'revenue': revenue_value
+                        })
+                    except:
+                        continue
+                
+                movie_data['trend_data'] = trend_data
+            
+            results.append(movie_data)
+        
+        return jsonify({
+            'success': True,
+            'data': results,
+            'type': comparison_type
+        })
+        
+    except Exception as e:
+        print(f"❌ アナリティクス比較エラー: {e}")
+        return jsonify({'error': str(e)})
+
+# 記事作成・編集の強化
+@app.route("/admin/articles/new-enhanced", methods=['GET', 'POST'])
+@site_access_required
+@admin_required
+def admin_create_article_enhanced():
+    """強化版記事作成"""
+    if request.method == 'POST':
+        try:
+            title = request.form.get('title', '').strip()
+            content = request.form.get('content', '').strip()
+            content_html = request.form.get('content_html', '').strip()
+            excerpt = request.form.get('excerpt', '').strip()
+            author = request.form.get('author', '').strip()
+            category = request.form.get('category', '').strip()
+            tags = request.form.get('tags', '').strip()
+            thumbnail_url = request.form.get('thumbnail_url', '').strip()
+            is_featured = request.form.get('is_featured') == 'on'
+            
+            if not title or not content:
+                return render_template('admin_article_form_enhanced.html', 
+                    error="タイトルと内容は必須です",
+                    form_data=request.form,
+                    categories=['映画分析', '興行収入', 'トレンド', 'インタビュー', 'レビュー', '業界動向']
+                )
+            
+            if not excerpt:
+                excerpt = content[:200] + '...' if len(content) > 200 else content
+            
+            article = Article(
+                title=title,
+                content=content,
+                content_html=content_html if content_html else content.replace('\n', '<br>'),
+                excerpt=excerpt,
+                author=author or '管理者',
+                category=category,
+                tags=tags,
+                thumbnail_url=thumbnail_url,
+                is_featured=is_featured,
+                published_date=datetime.now()
+            )
+            
+            db.session.add(article)
+            db.session.commit()
+            
+            print(f"✅ 強化版記事作成: {title}")
+            return redirect(url_for('admin_articles'))
+            
+        except Exception as e:
+            print(f"❌ 強化版記事作成エラー: {e}")
+            db.session.rollback()
+            return render_template('admin_article_form_enhanced.html', 
+                error=f"記事の作成に失敗しました: {str(e)}",
+                form_data=request.form,
+                categories=['映画分析', '興行収入', 'トレンド', 'インタビュー', 'レビュー', '業界動向']
+            )
+    
+    categories = ['映画分析', '興行収入', 'トレンド', 'インタビュー', 'レビュー', '業界動向']
+    return render_template('admin_article_form_enhanced.html', 
+        categories=categories,
+        article=None)
+
+# 検索機能の強化（キーワード検索とタグ対応）
+@app.route("/search-enhanced")
+@site_access_required
+def search_enhanced():
+    """強化版検索機能"""
+    # 既存のsearch関数をベースに、以下を追加:
+    # - キーワード検索の強化
+    # - タグ検索対応
+    # - 折りたたみ状態の保持
+    
+    # 基本的な処理は既存のsearchと同じですが、
+    # キーワード検索でタグも含めて検索するように修正
+    
+    query = Movie.query
+    
+    # キーワード検索の強化（タグ対応）
+    keyword = request.args.get('keyword')
+    if keyword:
+        query = query.filter(or_(
+            Movie.title.contains(keyword),
+            Movie.director.contains(keyword),
+            Movie.actor.contains(keyword),
+            Movie.scriptwriter.contains(keyword),
+            Movie.genre.contains(keyword),
+            Movie.description.contains(keyword),
+            # 将来的にtagsカラムを追加した際の準備
+            # Movie.tags.contains(keyword)
+        ))
 
 
 # ===== 管理者機能 =====
