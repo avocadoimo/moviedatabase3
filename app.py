@@ -871,6 +871,20 @@ def search_suggestions():
 def search():
     query = Movie.query
 
+    # キーワード検索パラメータ（タイトル・監督・キャスト・脚本・ジャンル・説明）
+    keyword = request.args.get('keyword')
+    if keyword:
+        query = query.filter(or_(
+            Movie.title.contains(keyword),
+            Movie.director.contains(keyword),
+            Movie.actor.contains(keyword),
+            Movie.scriptwriter.contains(keyword),
+            Movie.genre.contains(keyword),
+            Movie.description.contains(keyword)
+        ))
+
+
+
     # 基本検索パラメータ
     title = request.args.get('title')
     director = request.args.get('director')
@@ -1128,6 +1142,18 @@ def box_office_detail(movie_id):
 @site_access_required
 def table_view():
     query = Movie.query
+
+    # キーワード検索パラメータ（タイトル・監督・キャスト・脚本・ジャンル・説明）
+    keyword = request.args.get('keyword')
+    if keyword:
+        query = query.filter(or_(
+            Movie.title.contains(keyword),
+            Movie.director.contains(keyword),
+            Movie.actor.contains(keyword),
+            Movie.scriptwriter.contains(keyword),
+            Movie.genre.contains(keyword),
+            Movie.description.contains(keyword)
+        ))
 
     # 基本検索パラメータ
     title = request.args.get('title')
@@ -1953,6 +1979,61 @@ def word_cloud_api(movie_title):
     
     word_cloud_data = trending_manager.generate_fallback_wordcloud(movie_title)
     return jsonify(word_cloud_data)
+
+
+@app.route("/analytics")
+@site_access_required
+def analytics():
+    # 映画タイトルのキーワード補完用リスト取得
+    movies = Movie.query.order_by(Movie.title).all()
+    
+    # 選択された映画タイトル（カンマ区切り）を取得
+    titles_param = request.args.get('movie_titles', '').strip()
+    selected_titles = [t.strip() for t in titles_param.split(',') if t.strip()] if titles_param else []
+    selected_titles = selected_titles[:10]  # 最大10件に制限
+    
+    # 指定タイトルに一致する Movie レコードを取得
+    selected_movies = []
+    if selected_titles:
+        selected_movies = Movie.query.filter(Movie.title.in_(selected_titles)).all()
+    
+    # 棒グラフ用データ（興収）
+    bar_labels = []
+    bar_values = []
+    for m in selected_movies:
+        bar_labels.append(m.title)
+        bar_values.append(m.revenue if m.revenue else 0)
+    
+    # 折れ線グラフ用データ（週ごとの推移）
+    # ※BoxOfficeData.week が文字列なので、適切にソート・抽出する想定
+    trend_labels = []  # 週ラベル（例: '第1週', '第2週', ... up to 50）
+    trend_datasets = {}
+    for m in selected_movies:
+        entries = BoxOfficeData.query.filter_by(movie_id=m.movie_id).all()
+        # 週文字列を抽出してソート（例: "第1週"→1 等）
+        sorted_entries = sorted(entries, key=lambda e: int(re.sub(r'\D', '', e.week) or 0))
+        values = []
+        for i, e in enumerate(sorted_entries):
+            if i >= 50: 
+                break
+            # 数値に変換
+            try:
+                val = float(e.total_revenue) if e.total_revenue else 0
+            except:
+                val = 0
+            values.append(val)
+            week_label = e.week
+            if week_label not in trend_labels:
+                trend_labels.append(week_label)
+        trend_datasets[m.title] = values
+    
+    return render_template('analytics.html',
+                           movies=movies,
+                           bar_labels=bar_labels,
+                           bar_values=bar_values,
+                           trend_labels=trend_labels,
+                           trend_datasets=trend_datasets)
+
 
 # ===== 管理者機能 =====
 
