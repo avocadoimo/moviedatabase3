@@ -503,6 +503,12 @@
                             <span class="nav-text">AI CHAT</span>
                         </a>
                     </div>
+                    <div class="nav-item">
+                        <a href="{{ url_for('analytics') }}" 
+                           class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}">
+                            <span class="nav-text">ANALYTICS</span>
+                        </a>
+                    </div>
                     
                     <div class="nav-item">
                         <a href="{{ url_for('sns_ranking') }}" 

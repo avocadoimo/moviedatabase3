@@ -367,7 +367,17 @@
 
 <div class="search-form">
     <form method="get" id="searchForm">
+
         <div class="form-grid">
+            <!-- キーワード検索（追加） -->
+            <div class="form-row">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label" for="keyword">キーワード</label>
+                    <input type="text" id="keyword" name="keyword" class="form-input"
+                           value="{{ request.args.get('keyword', '') }}"
+                           placeholder="キーワードで検索">
+                </div>
+            </div>
             <!-- 基本検索 -->
             <div class="form-row">
                 <div class="form-group">

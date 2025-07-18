@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Analytics</h2>
+    <!-- モード切替 -->
+    <div>
+        <label><input type="radio" name="mode" value="box" checked>興収を比較する</label>
+        <label><input type="radio" name="mode" value="trend">推移を比較する</label>
+    </div>
+    <!-- 映画タイトル入力 -->
+    <div class="form-group" style="margin-top: 15px;">
+        <label for="movie_titles">映画タイトル (最大10件, コンマ区切り)</label>
+        <input type="text" id="movie_titles" name="movie_titles" list="titlesList" class="form-input"
+               placeholder="タイトルを入力 (例: 映画A, 映画B)">
+        <datalist id="titlesList">
+            {% for m in movies %}
+            <option value="{{ m.title }}">
+            {% endfor %}
+        </datalist>
+        <button type="button" class="btn btn-primary" onclick="updateCharts()">更新</button>
+    </div>
+    <!-- グラフ表示 -->
+    <canvas id="barChart" style="max-width:800px; margin-top:30px;"></canvas>
+    <canvas id="lineChart" style="max-width:800px; margin-top:30px; display:none;"></canvas>
+</div>
+{% endblock %}
+
+{% block foot %}
+<!-- Chart.js（CDN） -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Flask から渡されたデータを JavaScript へ
+const barLabels = {{ bar_labels|tojson }};
+const barValues = {{ bar_values|tojson }};
+const trendLabels = {{ trend_labels|tojson }};
+const trendDatasets = {{ trend_datasets|tojson }};
+
+// Chart.js の初期設定
+const ctxBar = document.getElementById('barChart').getContext('2d');
+const barChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+        labels: barLabels,
+        datasets: [{
+            label: '興収 (億円)',
+            data: barValues,
+            backgroundColor: 'rgba(26, 115, 232, 0.7)'
+        }]
+    },
+    options: { responsive: true, scales: { y: { title: { display: true, text: '億円' } } } }
+});
+
+const ctxLine = document.getElementById('lineChart').getContext('2d');
+const lineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+        labels: trendLabels,
+        datasets: Object.entries(trendDatasets).map(([title, values]) => ({
+            label: title,
+            data: values,
+            fill: false,
+            borderWidth: 2
+        }))
+    },
+    options: { responsive: true, scales: { y: { title: { display: true, text: '億円' } } } }
+});
+
+// モード切替
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.value === 'box') {
+            document.getElementById('barChart').style.display = 'block';
+            document.getElementById('lineChart').style.display = 'none';
+        } else {
+            document.getElementById('barChart').style.display = 'none';
+            document.getElementById('lineChart').style.display = 'block';
+        }
+    });
+});
+// 「更新」ボタン押下時にグラフを更新（簡易的にはページリロード）
+function updateCharts() {
+    const titles = document.getElementById('movie_titles').value;
+    window.location.href = "{{ url_for('analytics') }}?movie_titles=" + encodeURIComponent(titles);
+}
+</script>
+{% endblock %}

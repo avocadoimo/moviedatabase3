@@ -329,7 +329,17 @@
 <!-- 検索フォーム（search.htmlと同じ機能） -->
 <div class="search-form">
     <form method="get" id="searchForm">
+
         <div class="form-grid">
+            <!-- キーワード検索（追加） -->
+            <div class="form-row">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label" for="keyword">キーワード</label>
+                    <input type="text" id="keyword" name="keyword" class="form-input"
+                           value="{{ request.args.get('keyword', '') }}"
+                           placeholder="キーワードで検索">
+                </div>
+            </div>
             <!-- 基本検索 -->
             <div class="form-row">
                 <div class="form-group">
@@ -619,23 +629,19 @@ function toggleCollapse(sectionId) {
     
     content.classList.toggle('collapsed');
     trigger.classList.toggle('collapsed');
+    // 折りたたみ状態を保存
+    const isCollapsed = content.classList.contains('collapsed');
+    localStorage.setItem(sectionId, isCollapsed ? 'collapsed' : 'expanded');
 }
-
+ 
 // フォームクリア
 function clearForm() {
     document.getElementById('searchForm').reset();
     updateSelectionCounts();
+    // 検索条件クリア後、結果をリセット
+    window.location.href = window.location.pathname;
 }
-
-// 選択数カウント更新
-function updateSelectionCounts() {
-    const yearCheckboxes = document.querySelectorAll('input[name="years"]:checked');
-    document.getElementById('yearCount').textContent = `選択: ${yearCheckboxes.length}件`;
-    
-    const genreCheckboxes = document.querySelectorAll('input[name="genres"]:checked');
-    document.getElementById('genreCount').textContent = `選択: ${genreCheckboxes.length}件`;
-}
-
+ 
 // ページロード時の初期化
 document.addEventListener('DOMContentLoaded', function() {
     updateSelectionCounts();
@@ -643,11 +649,22 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectionCounts);
     });
-    
-    // 初期状態で折りたたみ
-    toggleCollapse('yearSection');
-    toggleCollapse('genreSection');
+     
+    // 保存された折りたたみ状態を反映
+    ['yearSection', 'genreSection'].forEach(function(id) {
+        const content = document.getElementById(id);
+        const trigger = content.previousElementSibling;
+        const state = localStorage.getItem(id);
+        if (state === 'expanded') {
+            content.classList.remove('collapsed');
+            trigger.classList.remove('collapsed');
+        } else {
+            content.classList.add('collapsed');
+            trigger.classList.add('collapsed');
+        }
+    });
 });
+
 </script>
 
 {% endblock %}
