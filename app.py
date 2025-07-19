@@ -2815,6 +2815,87 @@ def create_emergency_response():
     トップページに戻る: /
     """, 500, {'Content-Type': 'text/plain; charset=utf-8'}
 
+@app.route("/api/ranking-suggestions")
+@site_access_required
+def ranking_suggestions():
+    """ランキング検索候補API"""
+    query_type = request.args.get('type', '')
+    term = request.args.get('term', '').strip()
+    
+    if not term or len(term) < 2:
+        return jsonify([])
+    
+    suggestions = []
+    
+    try:
+        if query_type == 'director':
+            results = db.session.query(Movie.director, db.func.count(Movie.id).label('count'))\
+                               .filter(Movie.director.contains(term), Movie.director.isnot(None))\
+                               .group_by(Movie.director)\
+                               .order_by(db.func.count(Movie.id).desc())\
+                               .limit(8).all()
+            suggestions = [{'value': r[0], 'count': r[1]} for r in results if r[0]]
+            
+        elif query_type == 'actor':
+            results = db.session.query(Movie.actor, db.func.count(Movie.id).label('count'))\
+                               .filter(Movie.actor.contains(term), Movie.actor.isnot(None))\
+                               .group_by(Movie.actor)\
+                               .order_by(db.func.count(Movie.id).desc())\
+                               .limit(8).all()
+            suggestions = [{'value': r[0], 'count': r[1]} for r in results if r[0]]
+            
+        elif query_type == 'genre':
+            results = db.session.query(Movie.genre, db.func.count(Movie.id).label('count'))\
+                               .filter(Movie.genre.contains(term), Movie.genre.isnot(None))\
+                               .group_by(Movie.genre)\
+                               .order_by(db.func.count(Movie.id).desc())\
+                               .limit(8).all()
+            # ジャンルを分割して候補に追加
+            genre_set = set()
+            for r in results:
+                if r[0]:
+                    for genre in r[0].split(','):
+                        genre = genre.strip()
+                        if term.lower() in genre.lower():
+                            genre_set.add(genre)
+            suggestions = [{'value': genre, 'count': ''} for genre in list(genre_set)[:8]]
+            
+        elif query_type == 'distributor':
+            results = db.session.query(Movie.distributor, db.func.count(Movie.id).label('count'))\
+                               .filter(Movie.distributor.contains(term), Movie.distributor.isnot(None))\
+                               .group_by(Movie.distributor)\
+                               .order_by(db.func.count(Movie.id).desc())\
+                               .limit(8).all()
+            suggestions = [{'value': r[0], 'count': r[1]} for r in results if r[0]]
+            
+        elif query_type == 'year':
+            current_year = datetime.now().year
+            years = [str(year) for year in range(2000, current_year + 1) if term in str(year)]
+            suggestions = [{'value': year, 'count': ''} for year in years[:8]]
+            
+        elif query_type == 'freeword':
+            # タイトルと監督からフリーワード検索
+            title_results = db.session.query(Movie.title, db.func.count(Movie.id).label('count'))\
+                                     .filter(Movie.title.contains(term))\
+                                     .group_by(Movie.title)\
+                                     .order_by(db.func.count(Movie.id).desc())\
+                                     .limit(5).all()
+            
+            director_results = db.session.query(Movie.director, db.func.count(Movie.id).label('count'))\
+                                        .filter(Movie.director.contains(term), Movie.director.isnot(None))\
+                                        .group_by(Movie.director)\
+                                        .order_by(db.func.count(Movie.id).desc())\
+                                        .limit(3).all()
+            
+            suggestions = [{'value': r[0], 'count': r[1]} for r in title_results if r[0]]
+            suggestions.extend([{'value': r[0], 'count': r[1]} for r in director_results if r[0]])
+    
+    except Exception as e:
+        print(f"❌ 検索候補取得エラー: {e}")
+        suggestions = []
+    
+    return jsonify(suggestions[:8])
+
 # アプリケーション起動
 if __name__ == "__main__":
     # 環境変数読み込み
