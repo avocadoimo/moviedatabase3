@@ -2485,6 +2485,65 @@ def admin_create_article():
         categories=categories,
         article=None
     )
+@app.route("/admin/articles/new-enhanced", methods=['GET', 'POST'])
+@site_access_required
+@admin_required
+def admin_create_article_enhanced():
+
+@app.route("/api/upload-image", methods=['POST'])
+@site_access_required
+@admin_required
+def upload_image():
+    """画像アップロード処理"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'message': 'ファイルが選択されていません'})
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'ファイルが選択されていません'})
+        
+        # 簡易実装：Base64エンコードして返す（実際の実装では画像サーバーにアップロード）
+        import base64
+        file_data = file.read()
+        base64_data = base64.b64encode(file_data).decode('utf-8')
+        file_type = file.content_type
+        
+        data_url = f"data:{file_type};base64,{base64_data}"
+        
+        return jsonify({
+            'success': True,
+            'url': data_url,
+            'filename': file.filename
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/api/movie-search-suggestions")
+@site_access_required
+@admin_required  
+def movie_search_suggestions():
+    """記事作成用の映画検索候補"""
+    term = request.args.get('term', '').strip()
+    
+    if len(term) < 2:
+        return jsonify([])
+    
+    try:
+        movies = Movie.query.filter(Movie.title.contains(term)).limit(10).all()
+        suggestions = [
+            {
+                'id': movie.id,
+                'title': movie.title,
+                'revenue': movie.revenue or 0,
+                'year': movie.year
+            }
+            for movie in movies
+        ]
+        return jsonify(suggestions)
+    except Exception as e:
+        return jsonify([])
 
 @app.route("/admin/articles/<int:article_id>/edit", methods=['GET', 'POST'])
 @site_access_required
