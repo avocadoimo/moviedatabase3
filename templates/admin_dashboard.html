@@ -215,8 +215,11 @@
         <div class="action-card">
             <h3 class="action-title">📝 記事管理</h3>
             <div class="action-buttons">
-                <a href="{{ url_for('admin_create_article') }}" class="admin-btn btn-success">
+                <a href="{{ url_for('admin_create_article') }}" class="admin-btn btn-primary">
                     ➕ 新規記事作成
+                </a>
+                <a href="{{ url_for('admin_create_article_enhanced') }}" class="admin-btn btn-success">
+                    ✨ 強化版記事作成
                 </a>
                 <a href="{{ url_for('admin_articles') }}" class="admin-btn btn-primary">
                     📋 記事一覧・編集

@@ -606,19 +606,34 @@ function switchMode(mode) {
     }
 }
 
-document.addEventListener('input', function(e) {
-    if (e.target.classList.contains('movie-search-input')) {
-        const slot = e.target.dataset.slot;
-        const query = e.target.value.trim();
-        
-        if (query.length < 2) {
-            hideSuggestions(slot);
-            return;
+// ページロード時の初期化を修正
+document.addEventListener('DOMContentLoaded', function() {
+    // 検索フォームの表示状態を復元（localStorage優先）
+    const searchFormVisible = localStorage.getItem('searchFormVisible');
+    const hasSearchParams = window.location.search && window.location.search.length > 1;
+    
+    // localStorage の値が存在する場合はそれを優先
+    if (searchFormVisible !== null) {
+        if (searchFormVisible === 'true') {
+            document.getElementById('searchForm').style.display = 'block';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
+        } else {
+            document.getElementById('searchForm').style.display = 'none';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
         }
-        
-        searchMovies(query, slot);
+    } else {
+        // localStorage に値がない場合、検索パラメータがあれば表示
+        if (hasSearchParams) {
+            document.getElementById('searchForm').style.display = 'block';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
+            localStorage.setItem('searchFormVisible', 'true');
+        } else {
+            // 初回訪問時は非表示
+            document.getElementById('searchForm').style.display = 'none';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
+            localStorage.setItem('searchFormVisible', 'false');
+        }
     }
-});
 
 function searchMovies(query, slot) {
     const movies = {{ movies|tojson }};
@@ -665,6 +680,13 @@ function selectMovie(id, title, revenue, slot) {
     updateMovieDisplay(slot, title);
     updateSelectedCount();
     hideSuggestions(slot);
+    
+    // 候補リストを確実に非表示
+    const suggestions = document.querySelector(`.search-suggestions[data-slot="${slot}"]`);
+    if (suggestions) {
+        suggestions.style.display = 'none';
+        suggestions.innerHTML = '';
+    }
 }
 
 function updateMovieDisplay(slot, title) {
@@ -742,6 +764,14 @@ function updateApplyButton() {
     
     button.disabled = count === 0;
     button.textContent = count === 0 ? '📊 映画を選択してください' : '📊 分析を実行';
+    
+    // 映画が選択されている場合は候補リストを全て閉じる
+    if (count > 0) {
+        document.querySelectorAll('.search-suggestions').forEach(el => {
+            el.style.display = 'none';
+            el.innerHTML = '';
+        });
+    }
 }
 
 

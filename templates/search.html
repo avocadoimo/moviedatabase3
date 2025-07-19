@@ -740,23 +740,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchFormVisible = localStorage.getItem('searchFormVisible');
     const hasSearchParams = window.location.search && window.location.search.length > 1;
     
-    // localStorage の値が存在する場合はそれを優先
-    if (searchFormVisible !== null) {
-        if (searchFormVisible === 'true') {
-            document.getElementById('searchForm').style.display = 'block';
-            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
-        } else {
-            document.getElementById('searchForm').style.display = 'none';
-            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
-        }
+    // localStorage の値が存在する場合はそれを優先し、ページ遷移後も保持
+    if (searchFormVisible === 'true') {
+        document.getElementById('searchForm').style.display = 'block';
+        document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
+    } else if (searchFormVisible === 'false') {
+        document.getElementById('searchForm').style.display = 'none';
+        document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
     } else {
-        // localStorage に値がない場合、検索パラメータがあれば表示
+        // 初回訪問時の処理
         if (hasSearchParams) {
             document.getElementById('searchForm').style.display = 'block';
             document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
             localStorage.setItem('searchFormVisible', 'true');
         } else {
-            // 初回訪問時は非表示
             document.getElementById('searchForm').style.display = 'none';
             document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
             localStorage.setItem('searchFormVisible', 'false');
