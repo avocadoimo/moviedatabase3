@@ -95,6 +95,27 @@ class Movie(db.Model):
     copyright = db.Column(db.String(500))
     genre = db.Column(db.String(200))
 
+    # ✅ ここを追加
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "movie_id": self.movie_id,
+            "title": self.title,
+            "revenue": self.revenue,
+            "year": self.year,
+            "release_date": self.release_date,
+            "category": self.category,
+            "distributor": self.distributor,
+            "description": self.description,
+            "director": self.director,
+            "author": self.author,
+            "actor": self.actor,
+            "scriptwriter": self.scriptwriter,
+            "producer": self.producer,
+            "copyright": self.copyright,
+            "genre": self.genre,
+        }
+
 class BoxOfficeData(db.Model):
     __tablename__ = 'box_office_data'
     id = db.Column(db.Integer, primary_key=True)
@@ -1993,59 +2014,6 @@ def word_cloud_api(movie_title):
     return jsonify(word_cloud_data)
 
 
-@app.route("/analytics")
-@site_access_required
-def analytics():
-    # 映画タイトルのキーワード補完用リスト取得
-    movies = Movie.query.order_by(Movie.title).all()
-    
-    # 選択された映画タイトル（カンマ区切り）を取得
-    titles_param = request.args.get('movie_titles', '').strip()
-    selected_titles = [t.strip() for t in titles_param.split(',') if t.strip()] if titles_param else []
-    selected_titles = selected_titles[:10]  # 最大10件に制限
-    
-    # 指定タイトルに一致する Movie レコードを取得
-    selected_movies = []
-    if selected_titles:
-        selected_movies = Movie.query.filter(Movie.title.in_(selected_titles)).all()
-    
-    # 棒グラフ用データ（興収）
-    bar_labels = []
-    bar_values = []
-    for m in selected_movies:
-        bar_labels.append(m.title)
-        bar_values.append(m.revenue if m.revenue else 0)
-    
-    # 折れ線グラフ用データ（週ごとの推移）
-    # ※BoxOfficeData.week が文字列なので、適切にソート・抽出する想定
-    trend_labels = []  # 週ラベル（例: '第1週', '第2週', ... up to 50）
-    trend_datasets = {}
-    for m in selected_movies:
-        entries = BoxOfficeData.query.filter_by(movie_id=m.movie_id).all()
-        # 週文字列を抽出してソート（例: "第1週"→1 等）
-        sorted_entries = sorted(entries, key=lambda e: int(re.sub(r'\D', '', e.week) or 0))
-        values = []
-        for i, e in enumerate(sorted_entries):
-            if i >= 50: 
-                break
-            # 数値に変換
-            try:
-                val = float(e.total_revenue) if e.total_revenue else 0
-            except:
-                val = 0
-            values.append(val)
-            week_label = e.week
-            if week_label not in trend_labels:
-                trend_labels.append(week_label)
-        trend_datasets[m.title] = values
-    
-    return render_template('analytics.html',
-                           movies=movies,
-                           bar_labels=bar_labels,
-                           bar_values=bar_values,
-                           trend_labels=trend_labels,
-                           trend_datasets=trend_datasets)
-
 @app.route("/ranking")
 @site_access_required
 def ranking():
@@ -2225,12 +2193,13 @@ def generate_ranking(category_type, search_value):
         return None
 
 # アナリティクスページのルート
-@app.route("/analytics-new")
+@app.route("/analytics")
 @site_access_required
-def analytics_new():
-    """新しいアナリティクスページ"""
-    movies = Movie.query.filter(Movie.revenue.isnot(None)).order_by(Movie.title).all()
-    return render_template('analytics_new.html', movies=movies)
+def analytics():
+    movies = Movie.query.all()
+    movie_dicts = [movie.to_dict() for movie in movies]  # ✅ 辞書形式に変換
+    return render_template("analytics.html", movies=movie_dicts)
+
 
 @app.route("/api/analytics/compare", methods=['POST'])
 @site_access_required
