@@ -608,58 +608,95 @@ function switchMode(mode) {
 
 // ページロード時の初期化を修正
 document.addEventListener('DOMContentLoaded', function() {
-    // 検索フォームの表示状態を復元（localStorage優先）
-    const searchFormVisible = localStorage.getItem('searchFormVisible');
-    const hasSearchParams = window.location.search && window.location.search.length > 1;
+    updateSelectedCount();
+    initializeSearchFunctionality();
     
-    // localStorage の値が存在する場合はそれを優先
-    if (searchFormVisible !== null) {
-        if (searchFormVisible === 'true') {
-            document.getElementById('searchForm').style.display = 'block';
-            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
-        } else {
-            document.getElementById('searchForm').style.display = 'none';
-            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
+    // 外部クリックで候補リスト非表示
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.movie-search-container')) {
+            document.querySelectorAll('.search-suggestions').forEach(el => {
+                el.style.display = 'none';
+            });
         }
-    } else {
-        // localStorage に値がない場合、検索パラメータがあれば表示
-        if (hasSearchParams) {
-            document.getElementById('searchForm').style.display = 'block';
-            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
-            localStorage.setItem('searchFormVisible', 'true');
-        } else {
-            // 初回訪問時は非表示
-            document.getElementById('searchForm').style.display = 'none';
-            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
-            localStorage.setItem('searchFormVisible', 'false');
-        }
-    }
+    });
+});
+
+function initializeSearchFunctionality() {
+    // 各スロットの検索機能を初期化
+    document.querySelectorAll('.movie-search-input').forEach(input => {
+        input.addEventListener('input', debounce(function() {
+            const query = this.value.trim();
+            const slot = this.dataset.slot;
+            
+            if (query.length < 2) {
+                hideSuggestions(slot);
+                return;
+            }
+            
+            searchMovies(query, slot);
+        }, 300));
+        
+        // フォーカス時に既存の検索結果を表示
+        input.addEventListener('focus', function() {
+            const query = this.value.trim();
+            const slot = this.dataset.slot;
+            
+            if (query.length >= 2) {
+                searchMovies(query, slot);
+            }
+        });
+    });
+}
 
 function searchMovies(query, slot) {
-    const movies = {{ movies|tojson }};
-    const filteredMovies = movies.filter(movie => 
-        movie.title.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 8);
-    
-    showSuggestions(filteredMovies, slot);
+    try {
+        const movies = {{ movies|tojson }};
+        console.log('検索実行:', query, 'スロット:', slot, '総映画数:', movies.length);
+        
+        const filteredMovies = movies.filter(movie => 
+            movie.title && movie.title.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 8);
+        
+        console.log('検索結果:', filteredMovies.length, '件');
+        showSuggestions(filteredMovies, slot);
+    } catch (error) {
+        console.error('映画検索エラー:', error);
+        showSuggestions([], slot);
+    }
 }
 
 function showSuggestions(movies, slot) {
     const suggestions = document.querySelector(`.search-suggestions[data-slot="${slot}"]`);
     
-    if (movies.length === 0) {
-        hideSuggestions(slot);
+    if (!suggestions) {
+        console.error('候補リスト要素が見つかりません:', slot);
         return;
     }
     
-    suggestions.innerHTML = movies.map(movie => `
-        <div class="suggestion-item" onclick="selectMovie(${movie.id}, '${movie.title.replace(/'/g, "\\'")}', ${movie.revenue || 0}, '${slot}')">
-            <span>${movie.title}</span>
-            <span class="suggestion-revenue">${movie.revenue || 0}億円</span>
-        </div>
-    `).join('');
+    if (movies.length === 0) {
+        suggestions.innerHTML = '<div class="suggestion-item" style="padding: 10px; color: #666; text-align: center;">該当する映画が見つかりません</div>';
+        suggestions.style.display = 'block';
+        return;
+    }
     
-    suggestions.style.display = 'block';
+    try {
+        suggestions.innerHTML = movies.map(movie => {
+            const safeTitle = (movie.title || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+            return `
+                <div class="suggestion-item" onclick="selectMovie(${movie.id}, '${safeTitle}', ${movie.revenue || 0}, '${slot}')">
+                    <span>${movie.title || '無題'}</span>
+                    <span class="suggestion-revenue">${movie.revenue || 0}億円</span>
+                </div>
+            `;
+        }).join('');
+        
+        suggestions.style.display = 'block';
+        console.log('候補表示完了:', movies.length, '件');
+    } catch (error) {
+        console.error('候補表示エラー:', error);
+        suggestions.innerHTML = '<div class="suggestion-item" style="padding: 10px; color: #f44336; text-align: center;">表示エラー</div>';
+        suggestions.style.display = 'block';
+    }
 }
 
 function hideSuggestions(slot) {
@@ -764,6 +801,8 @@ function updateApplyButton() {
     
     button.disabled = count === 0;
     button.textContent = count === 0 ? '📊 映画を選択してください' : '📊 分析を実行';
+    
+    console.log('ボタン更新:', count, '件選択', button.disabled ? '無効' : '有効');
     
     // 映画が選択されている場合は候補リストを全て閉じる
     if (count > 0) {

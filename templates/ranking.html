@@ -398,20 +398,34 @@
 // 検索候補機能
 let searchTimeout;
 
-document.getElementById('search_value').addEventListener('input', function() {
-    const query = this.value.trim();
-    const categoryType = document.getElementById('category_type').value;
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search_value');
+    const categorySelect = document.getElementById('category_type');
     
-    clearTimeout(searchTimeout);
-    
-    if (query.length < 2) {
-        hideSuggestions();
-        return;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            const categoryType = categorySelect ? categorySelect.value : '';
+            
+            clearTimeout(searchTimeout);
+            
+            if (query.length < 2 || !categoryType) {
+                hideSuggestions();
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                fetchSuggestions(query, categoryType);
+            }, 300);
+        });
     }
     
-    searchTimeout = setTimeout(() => {
-        fetchSuggestions(query, categoryType);
-    }, 300);
+    // カテゴリ変更時も候補をリセット
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            hideSuggestions();
+        });
+    }
 });
 
 function fetchSuggestions(query, categoryType) {
@@ -420,14 +434,25 @@ function fetchSuggestions(query, categoryType) {
         return;
     }
     
+    // デバッグログ追加
+    console.log('検索候補取得:', query, categoryType);
+    
     fetch(`/api/ranking-suggestions?type=${categoryType}&term=${encodeURIComponent(query)}`)
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('取得データ:', data);
             showSuggestions(data);
         })
         .catch(error => {
             console.error('検索候補取得エラー:', error);
-            hideSuggestions();
+            // エラー時もとりあえず空配列で候補表示
+            showSuggestions([]);
         });
 }
 

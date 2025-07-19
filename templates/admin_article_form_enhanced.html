@@ -924,7 +924,7 @@ function updateThumbnailPreview(url) {
     
     if (url.trim()) {
         preview.innerHTML = `
-            <img src="${url}" alt="サムネイル" onerror="showThumbnailError()">
+            <img src="${url}" alt="サムネイル" onerror="this.style.display='none'; this.parentNode.innerHTML='<div class=\\'thumbnail-placeholder\\' style=\\'color: #f44336;\\'><div>画像読み込みエラー</div><div style=\\'font-size: 12px;\\'>URLを確認してください</div></div>';">
             <button type="button" class="thumbnail-remove" onclick="removeThumbnail()">×</button>
         `;
     } else {
@@ -937,6 +937,24 @@ function updateThumbnailPreview(url) {
     }
 }
 
+function showThumbnailError() {
+    const preview = document.getElementById('thumbnailPreview');
+    preview.innerHTML = `
+        <div class="thumbnail-placeholder" style="color: #f44336;">
+            <div>画像読み込みエラー</div>
+            <div style="font-size: 12px;">URLを確認してください</div>
+        </div>
+    `;
+}
+function showThumbnailError() {
+    const preview = document.getElementById('thumbnailPreview');
+    preview.innerHTML = `
+        <div class="thumbnail-placeholder" style="color: #f44336;">
+            <div>画像読み込みエラー</div>
+            <div style="font-size: 12px;">URLを確認してください</div>
+        </div>
+    `;
+}
 function showThumbnailError() {
     const preview = document.getElementById('thumbnailPreview');
     preview.innerHTML = `
