@@ -1,11 +1,9 @@
-<!-- templates/analytics_new.html -->
 {% extends "base.html" %}
 
-{% block title %}アナリティクス - 映画データベース{% endblock %}
+{% block title %}映画アナリティクス - 映画データベース{% endblock %}
 
 {% block head %}
 <style>
-
     .page-container {
         max-width: 1200px;
         margin: 0 auto;
@@ -19,18 +17,97 @@
         border-radius: 12px;
         text-align: center;
         margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        animation: slideRight 3s infinite;
     }
 
     .page-title {
         font-size: 32px;
         font-weight: 700;
         margin: 0 0 10px;
+        position: relative;
+        z-index: 1;
     }
 
     .page-subtitle {
         font-size: 16px;
         opacity: 0.9;
         margin: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* モード切替 */
+    .mode-toggle {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .toggle-buttons {
+        display: inline-flex;
+        background: #f0f0f0;
+        border-radius: 12px;
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .toggle-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: #666;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 160px;
+    }
+
+    .toggle-btn.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        transform: translateY(-1px);
+    }
+
+    .toggle-btn:hover:not(.active) {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+    }
+
+    /* 検索セクション */
+    .search-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+
+    .search-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 20px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .movie-slots-container {
@@ -41,148 +118,35 @@
 
     .movie-slot {
         background: #f8f9fa;
-        border-radius: 8px;
-        padding: 16px;
+        border-radius: 12px;
+        padding: 20px;
         border: 2px solid #e9ecef;
-        transition: border-color 0.3s ease;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .movie-slot:hover {
+        border-color: #667eea;
+        background: #f8f8ff;
     }
 
     .movie-slot.has-selection {
         border-color: #28a745;
         background: #f8fff8;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
     }
 
     .slot-label {
         display: block;
         font-weight: 600;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
         color: #333;
         font-size: 14px;
     }
 
     .movie-search-container {
         position: relative;
-        margin-bottom: 8px;
-    }
-
-    .selected-movie-display {
-        background: #e7f3ff;
-        border: 1px solid #b3d9ff;
-        border-radius: 6px;
-        padding: 8px 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 14px;
-    }
-
-    .selected-movie-title {
-        font-weight: 600;
-        color: #0066cc;
-    }
-
-    .remove-movie-btn {
-        background: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-size: 12px;
-    }
-
-    .movie-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding: 16px;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-
-    .add-movie-btn {
-        background: #28a745;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .add-movie-btn:disabled {
-        background: #6c757d;
-        cursor: not-allowed;
-    }
-
-    .movie-count {
-        font-size: 14px;
-        color: #666;
-        font-weight: 600;
-    }
-
-
-    /* モード切替 */
-    .mode-toggle {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        padding: 20px;
-        margin-bottom: 30px;
-        text-align: center;
-    }
-
-    .toggle-buttons {
-        display: inline-flex;
-        background: #f0f0f0;
-        border-radius: 8px;
-        padding: 4px;
-        gap: 4px;
-    }
-
-    .toggle-btn {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 6px;
-        background: transparent;
-        color: #666;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .toggle-btn.active {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    }
-
-    .toggle-btn:hover:not(.active) {
-        background: #e0e0e0;
-    }
-
-    /* 検索セクション */
-    .search-section {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        padding: 25px;
-        margin-bottom: 30px;
-    }
-
-    .search-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0 0 20px;
-        color: #333;
-    }
-
-    .movie-search-container {
-        position: relative;
-        margin-bottom: 20px;
+        margin-bottom: 12px;
     }
 
     .movie-search-input {
@@ -191,7 +155,8 @@
         border: 2px solid #ddd;
         border-radius: 8px;
         font-size: 14px;
-        transition: border-color 0.3s ease;
+        transition: all 0.3s ease;
+        background: white;
     }
 
     .movie-search-input:focus {
@@ -213,15 +178,17 @@
         overflow-y: auto;
         z-index: 100;
         display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .suggestion-item {
-        padding: 10px 16px;
+        padding: 12px 16px;
         cursor: pointer;
         border-bottom: 1px solid #f0f0f0;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        transition: background 0.2s ease;
     }
 
     .suggestion-item:hover {
@@ -235,56 +202,91 @@
     .suggestion-revenue {
         font-size: 12px;
         color: #666;
+        font-weight: 500;
     }
 
-    /* 選択済み映画 */
-    .selected-movies {
-        margin-bottom: 20px;
-    }
-
-    .selected-movies-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 15px;
-    }
-
-    .selected-movie-tag {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 14px;
-        display: flex;
+    .selected-movie-display {
+        background: linear-gradient(135deg, #e7f3ff, #f0f8ff);
+        border: 2px solid #b3d9ff;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: none;
+        justify-content: space-between;
         align-items: center;
-        gap: 8px;
+        font-size: 14px;
+        animation: slideIn 0.3s ease;
     }
 
-    .remove-movie {
-        background: rgba(255,255,255,0.3);
-        border: none;
+    .selected-movie-title {
+        font-weight: 600;
+        color: #0066cc;
+    }
+
+    .remove-movie-btn {
+        background: #dc3545;
         color: white;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
         cursor: pointer;
         font-size: 12px;
+        font-weight: 600;
+        transition: background 0.3s ease;
+    }
+
+    .remove-movie-btn:hover {
+        background: #c82333;
+    }
+
+    /* 映画追加コントロール */
+    .movie-controls {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        justify-content: center;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 8px;
     }
 
-    .remove-movie:hover {
-        background: rgba(255,255,255,0.5);
+    .add-movie-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
     }
 
-    /* コントロール */
+    .add-movie-btn:hover:not(:disabled) {
+        background: #218838;
+        transform: translateY(-1px);
+    }
+
+    .add-movie-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .movie-count {
+        font-size: 14px;
+        color: #666;
+        font-weight: 600;
+    }
+
+    /* コントロールセクション */
     .controls-section {
         display: flex;
         gap: 20px;
         align-items: center;
         margin-bottom: 20px;
         flex-wrap: wrap;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 8px;
     }
 
     .control-group {
@@ -304,36 +306,47 @@
         border: 2px solid #ddd;
         border-radius: 6px;
         font-size: 14px;
+        background: white;
+        transition: border-color 0.3s ease;
+    }
+
+    .control-select:focus, .control-input:focus {
+        outline: none;
+        border-color: #667eea;
     }
 
     .apply-btn {
-        padding: 10px 20px;
+        padding: 12px 24px;
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
+        min-width: 140px;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
     }
 
-    .apply-btn:hover {
+    .apply-btn:hover:not(:disabled) {
         background: linear-gradient(135deg, #5a6fd8, #6a42a3);
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
 
     .apply-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
         transform: none;
+        background: #ccc;
     }
 
     /* グラフセクション */
     .chart-section {
         background: white;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         padding: 25px;
         margin-bottom: 30px;
     }
@@ -346,20 +359,33 @@
 
     .chart-placeholder {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         height: 400px;
         color: #666;
         font-size: 16px;
         border: 2px dashed #ddd;
-        border-radius: 8px;
+        border-radius: 12px;
+        background: #fafafa;
+    }
+
+    .placeholder-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.6;
+    }
+
+    .placeholder-text {
+        text-align: center;
+        line-height: 1.5;
     }
 
     /* 映画情報セクション */
     .movie-info-section {
         background: white;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         padding: 25px;
     }
 
@@ -371,25 +397,33 @@
 
     .movie-info-card {
         border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 15px;
+        border-radius: 12px;
+        padding: 20px;
         display: flex;
         gap: 15px;
         align-items: center;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .movie-info-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
     }
 
     .movie-poster-small {
-        width: 60px;
-        height: 80px;
-        border-radius: 4px;
+        width: 70px;
+        height: 90px;
+        border-radius: 6px;
         overflow: hidden;
         background: linear-gradient(135deg, #667eea, #764ba2);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 24px;
+        font-size: 28px;
         flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
 
     .movie-poster-small img {
@@ -413,13 +447,14 @@
         font-size: 14px;
         color: #666;
         line-height: 1.4;
+        margin-bottom: 8px;
     }
 
     .movie-revenue {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 700;
         color: #34a853;
-        margin-top: 8px;
+        margin: 0;
     }
 
     /* エラー・空状態 */
@@ -456,11 +491,17 @@
 
         .toggle-btn {
             width: 100%;
+            min-width: auto;
         }
 
         .controls-section {
             flex-direction: column;
             align-items: stretch;
+            gap: 12px;
+        }
+
+        .control-group {
+            justify-content: space-between;
         }
 
         .chart-container {
@@ -471,9 +512,76 @@
             grid-template-columns: 1fr;
         }
 
-        .selected-movies-list {
-            flex-direction: column;
+        .movie-info-card {
+            padding: 16px;
         }
+
+        .movie-poster-small {
+            width: 60px;
+            height: 80px;
+            font-size: 24px;
+        }
+
+        .movie-details-title {
+            font-size: 14px;
+        }
+
+        .movie-revenue {
+            font-size: 18px;
+        }
+
+        .movie-controls {
+            flex-direction: column;
+            gap: 12px;
+        }
+    }
+
+    /* アニメーション */
+    @keyframes slideRight {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ローディング状態 */
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 32px;
+        height: 32px;
+        margin: -16px 0 0 -16px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Chart.js スタイル調整 */
+    #analysisChart {
+        max-height: 100%;
+        max-width: 100%;
     }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -489,10 +597,10 @@
     <!-- モード切替 -->
     <div class="mode-toggle">
         <div class="toggle-buttons">
-            <button class="toggle-btn active" id="revenueMode" onclick="switchMode('revenue')">
+            <button class="toggle-btn active" id="revenueMode" data-mode="revenue">
                 💰 興収を比較する
             </button>
-            <button class="toggle-btn" id="trendMode" onclick="switchMode('trend')">
+            <button class="toggle-btn" id="trendMode">
                 📈 推移を比較する
             </button>
         </div>
@@ -502,36 +610,43 @@
     <div class="search-section">
         <h3 class="search-title">🔍 映画を選択</h3>
         
-    <!-- 映画追加セクション -->
-    <div class="movie-slots-container" id="movieSlotsContainer">
-        <!-- デフォルト2つのスロット -->
-        <div class="movie-slot" data-slot="1">
-            <label class="slot-label">映画 1</label>
-            <div class="movie-search-container">
-                <input type="text" 
-                       class="movie-search-input"
-                       placeholder="映画タイトルを入力..."
-                       autocomplete="off"
-                       data-slot="1">
-                <div class="search-suggestions" data-slot="1" style="display: none;"></div>
+        <!-- 映画追加セクション -->
+        <div class="movie-slots-container" id="movieSlotsContainer">
+            <!-- デフォルト2つのスロット -->
+            <div class="movie-slot" data-slot="1">
+                <label class="slot-label">映画 1</label>
+                <div class="movie-search-container">
+                    <input type="text" 
+                           class="movie-search-input"
+                           placeholder="映画タイトルを入力..."
+                           autocomplete="off"
+                           data-slot="1">
+                    <div class="search-suggestions" data-slot="1"></div>
+                </div>
+                <div class="selected-movie-display" data-slot="1"></div>
             </div>
-            <div class="selected-movie-display" data-slot="1" style="display: none;"></div>
-        </div>
-        
-        <div class="movie-slot" data-slot="2">
-            <label class="slot-label">映画 2</label>
-            <div class="movie-search-container">
-                <input type="text" 
-                       class="movie-search-input"
-                       placeholder="映画タイトルを入力..."
-                       autocomplete="off"
-                       data-slot="2">
-                <div class="search-suggestions" data-slot="2" style="display: none;"></div>
+            
+            <div class="movie-slot" data-slot="2">
+                <label class="slot-label">映画 2</label>
+                <div class="movie-search-container">
+                    <input type="text" 
+                           class="movie-search-input"
+                           placeholder="映画タイトルを入力..."
+                           autocomplete="off"
+                           data-slot="2">
+                    <div class="search-suggestions" data-slot="2"></div>
+                </div>
+                <div class="selected-movie-display" data-slot="2"></div>
             </div>
-            <div class="selected-movie-display" data-slot="2" style="display: none;"></div>
         </div>
-    </div>
 
+        <!-- 映画追加コントロール -->
+        <div class="movie-controls">
+            <button class="add-movie-btn" id="addMovieBtn">
+                ➕ 映画を追加
+            </button>
+            <span class="movie-count">選択映画数: <span id="selectedCount">0</span> / 10</span>
+        </div>
 
         <!-- 推移比較用コントロール -->
         <div id="trendControls" class="controls-section" style="display: none;">
@@ -559,7 +674,7 @@
             </div>
         </div>
 
-        <button id="applyAnalysis" class="apply-btn" onclick="applyAnalysis()" disabled>
+        <button id="applyAnalysis" class="apply-btn" disabled>
             📊 分析を実行
         </button>
     </div>
@@ -568,7 +683,11 @@
     <div class="chart-section">
         <div class="chart-container">
             <div class="chart-placeholder" id="chartPlaceholder">
-                📊 映画を選択してグラフを表示
+                <div class="placeholder-icon">📊</div>
+                <div class="placeholder-text">
+                    映画を選択してグラフを表示<br>
+                    <small>最大10作品まで比較可能</small>
+                </div>
             </div>
             <canvas id="analysisChart" style="display: none;"></canvas>
         </div>
@@ -587,6 +706,7 @@ let slotCounter = 2;
 let currentMode = 'revenue';
 let chartInstance = null;
 const maxMovies = 10;
+const movies = {{ movies|tojson }};
 
 // モード切替
 function switchMode(mode) {
@@ -600,16 +720,25 @@ function switchMode(mode) {
     document.getElementById('revenueControls').style.display = mode === 'revenue' ? 'flex' : 'none';
     document.getElementById('trendControls').style.display = mode === 'trend' ? 'flex' : 'none';
     
-    // グラフを更新
-    if (selectedMovies.length > 0) {
+    // グラフを更新（映画が選択されている場合）
+    if (Object.keys(selectedMovies).length > 0) {
         applyAnalysis();
     }
 }
 
-// ページロード時の初期化を修正
+// ページロード時の初期化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Analytics page loaded. Movies data:', movies ? movies.length : 0);
+    
+    updateApplyButton();
     updateSelectedCount();
     initializeSearchFunctionality();
+    
+    // イベントリスナーを追加
+    document.getElementById('revenueMode').addEventListener('click', () => switchMode('revenue'));
+    document.getElementById('trendMode').addEventListener('click', () => switchMode('trend'));
+    document.getElementById('addMovieBtn').addEventListener('click', addMovieSlot);
+    document.getElementById('applyAnalysis').addEventListener('click', applyAnalysis);
     
     // 外部クリックで候補リスト非表示
     document.addEventListener('click', function(e) {
@@ -650,8 +779,13 @@ function initializeSearchFunctionality() {
 
 function searchMovies(query, slot) {
     try {
-        const movies = {{ movies|tojson }};
-        console.log('検索実行:', query, 'スロット:', slot, '総映画数:', movies.length);
+        console.log('検索実行:', query, 'スロット:', slot, '総映画数:', movies ? movies.length : 0);
+        
+        if (!movies || !Array.isArray(movies)) {
+            console.error('映画データが無効です');
+            showSuggestions([], slot);
+            return;
+        }
         
         const filteredMovies = movies.filter(movie => 
             movie.title && movie.title.toLowerCase().includes(query.toLowerCase())
@@ -681,14 +815,25 @@ function showSuggestions(movies, slot) {
     
     try {
         suggestions.innerHTML = movies.map(movie => {
-            const safeTitle = (movie.title || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
-            return `
-                <div class="suggestion-item" onclick="selectMovie(${movie.id}, '${safeTitle}', ${movie.revenue || 0}, '${slot}')">
-                    <span>${movie.title || '無題'}</span>
-                    <span class="suggestion-revenue">${movie.revenue || 0}億円</span>
-                </div>
-            `;
+                return `
+                        <div class="suggestion-item" data-movie-id="${movie.id}" data-movie-title="${movie.title || ''}" data-movie-revenue="${movie.revenue || 0}" data-slot="${slot}">
+                                <span>${movie.title || '無題'}</span>
+                                <span class="suggestion-revenue">${movie.revenue || 0}億円</span>
+                        </div>
+                `;
         }).join('');
+
+        // イベントリスナーを追加
+        suggestions.addEventListener('click', function(e) {
+                const item = e.target.closest('.suggestion-item');
+                if (item) {
+                        const movieId = item.dataset.movieId;
+                        const movieTitle = item.dataset.movieTitle;
+                        const movieRevenue = parseFloat(item.dataset.movieRevenue);
+                        const slot = item.dataset.slot;
+                        selectMovie(movieId, movieTitle, movieRevenue, slot);
+                }
+        });
         
         suggestions.style.display = 'block';
         console.log('候補表示完了:', movies.length, '件');
@@ -715,15 +860,9 @@ function selectMovie(id, title, revenue, slot) {
     
     // 選択表示を更新
     updateMovieDisplay(slot, title);
+    updateApplyButton();
     updateSelectedCount();
     hideSuggestions(slot);
-    
-    // 候補リストを確実に非表示
-    const suggestions = document.querySelector(`.search-suggestions[data-slot="${slot}"]`);
-    if (suggestions) {
-        suggestions.style.display = 'none';
-        suggestions.innerHTML = '';
-    }
 }
 
 function updateMovieDisplay(slot, title) {
@@ -746,6 +885,7 @@ function removeMovie(slot) {
     
     display.style.display = 'none';
     movieSlot.classList.remove('has-selection');
+    updateApplyButton();
     updateSelectedCount();
 }
 
@@ -766,12 +906,36 @@ function addMovieSlot() {
                    placeholder="映画タイトルを入力..."
                    autocomplete="off"
                    data-slot="${slotCounter}">
-            <div class="search-suggestions" data-slot="${slotCounter}" style="display: none;"></div>
+            <div class="search-suggestions" data-slot="${slotCounter}"></div>
         </div>
-        <div class="selected-movie-display" data-slot="${slotCounter}" style="display: none;"></div>
+        <div class="selected-movie-display" data-slot="${slotCounter}"></div>
     `;
     
     container.appendChild(newSlot);
+    
+    // 新しく追加されたスロットに検索機能を追加
+    const newInput = newSlot.querySelector('.movie-search-input');
+    newInput.addEventListener('input', debounce(function() {
+        const query = this.value.trim();
+        const slot = this.dataset.slot;
+        
+        if (query.length < 2) {
+            hideSuggestions(slot);
+            return;
+        }
+        
+        searchMovies(query, slot);
+    }, 300));
+    
+    newInput.addEventListener('focus', function() {
+        const query = this.value.trim();
+        const slot = this.dataset.slot;
+        
+        if (query.length >= 2) {
+            searchMovies(query, slot);
+        }
+    });
+    
     updateAddButton();
 }
 
@@ -779,16 +943,14 @@ function updateSelectedCount() {
     const count = Object.keys(selectedMovies).length;
     document.getElementById('selectedCount').textContent = count;
     updateAddButton();
-    updateApplyButton();
 }
 
 function updateAddButton() {
-    const btn = document.querySelector('.add-movie-btn');
-    const count = Object.keys(selectedMovies).length;
+    const btn = document.getElementById('addMovieBtn');
     
     if (slotCounter >= maxMovies) {
         btn.disabled = true;
-        btn.textContent = '上限に達しました';
+        btn.textContent = '上限に達しました (10/10)';
     } else {
         btn.disabled = false;
         btn.textContent = '➕ 映画を追加';
@@ -800,43 +962,9 @@ function updateApplyButton() {
     const count = Object.keys(selectedMovies).length;
     
     button.disabled = count === 0;
-    button.textContent = count === 0 ? '📊 映画を選択してください' : '📊 分析を実行';
+    button.textContent = count === 0 ? '📊 映画を選択してください' : `📊 分析を実行 (${count}作品)`;
     
     console.log('ボタン更新:', count, '件選択', button.disabled ? '無効' : '有効');
-    
-    // 映画が選択されている場合は候補リストを全て閉じる
-    if (count > 0) {
-        document.querySelectorAll('.search-suggestions').forEach(el => {
-            el.style.display = 'none';
-            el.innerHTML = '';
-        });
-    }
-}
-
-
-
-// 選択済み映画リスト更新
-function updateSelectedMoviesList() {
-    const list = document.getElementById('selectedMoviesList');
-    
-    if (selectedMovies.length === 0) {
-        list.innerHTML = '<div style="color: #666; font-style: italic;">映画が選択されていません</div>';
-        return;
-    }
-    
-    list.innerHTML = selectedMovies.map(movie => `
-        <div class="selected-movie-tag">
-            <span>${movie.title}</span>
-            <button class="remove-movie" onclick="removeMovie(${movie.id})">×</button>
-        </div>
-    `).join('');
-}
-
-// 分析実行ボタンの状態更新
-function updateApplyButton() {
-    const button = document.getElementById('applyAnalysis');
-    button.disabled = selectedMovies.length === 0;
-    button.textContent = selectedMovies.length === 0 ? '📊 映画を選択してください' : '📊 分析を実行';
 }
 
 // 分析実行
@@ -844,12 +972,18 @@ function applyAnalysis() {
     const movieData = Object.values(selectedMovies);
     if (movieData.length === 0) return;
     
+    const button = document.getElementById('applyAnalysis');
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '🔄 分析中...';
+    
     const requestData = {
         movie_titles: movieData.map(movie => movie.title),
         type: currentMode,
         max_weeks: parseInt(document.getElementById('maxWeeks').value) || 20
     };
 
+    console.log('分析リクエスト:', requestData);
     
     fetch('/api/analytics/compare', {
         method: 'POST',
@@ -858,8 +992,15 @@ function applyAnalysis() {
         },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('分析結果:', data);
         if (data.success) {
             if (currentMode === 'revenue') {
                 renderRevenueChart(data.data);
@@ -868,16 +1009,16 @@ function applyAnalysis() {
             }
             showMovieInfo(data.data);
         } else {
-            alert('分析エラー: ' + (data.error || '不明なエラー'));
+            throw new Error(data.error || '分析に失敗しました');
         }
     })
     .catch(error => {
         console.error('分析エラー:', error);
-        alert('通信エラーが発生しました');
+        alert('分析エラー: ' + error.message);
     })
     .finally(() => {
         button.disabled = false;
-        button.textContent = '📊 分析を実行';
+        button.textContent = originalText;
     });
 }
 
@@ -914,6 +1055,8 @@ function renderRevenueChart(data) {
                 borderWidth: 2,
                 borderRadius: 8,
                 borderSkipped: false,
+                barPercentage: 0.6,
+                categoryPercentage: 0.8,
             }]
         },
         options: {
@@ -978,12 +1121,42 @@ function renderTrendChart(data) {
     const weeks = Array.from({length: maxWeeks}, (_, i) => i + 1);
     
     const datasets = data.map((movie, index) => {
-        const trendData = movie.trend_data || [];
+        // BoxOfficeDataから来るデータ構造に対応
+        const trendData = movie.trend_data || movie.trendData || movie.weekly_data || movie.box_office_data || [];
+        console.log(`${movie.title}の推移データ:`, trendData);
+
         const values = weeks.map(week => {
-            const data = trendData.find(d => d.week === week);
-            return data ? data.revenue : null;
+            // 週番号の抽出関数
+            const extractWeekNumber = (weekStr) => {
+                if (!weekStr) return null;
+                const match = String(weekStr).match(/(\d+)/);
+                return match ? parseInt(match[1]) : null;
+            };
+
+            // より柔軟な検索条件
+            const weekData = trendData.find(d => {
+                const dataWeekNum = extractWeekNumber(d.week) || d.week_number || d.week_num;
+                return dataWeekNum === week;
+            });
+
+            if (weekData) {
+                // 文字列から数値への変換も含めた収益取得
+                const revenueStr = weekData.total_revenue || weekData.revenue || weekData.cumulative_revenue || weekData.box_office || '0';
+
+                // 文字列から数値を抽出（「123.4億」→ 123.4）
+                const extractRevenue = (str) => {
+                    if (typeof str === 'number') return str;
+                    const numMatch = String(str).replace(/[億円,]/g, '').match(/[\d.]+/);
+                    return numMatch ? parseFloat(numMatch[0]) : 0;
+                };
+
+                return extractRevenue(revenueStr);
+            }
+            return null;
         });
-        
+
+        console.log(`${movie.title}の週別データ:`, values);
+
         return {
             label: movie.title,
             data: values,
@@ -997,7 +1170,7 @@ function renderTrendChart(data) {
             spanGaps: true
         };
     });
-    
+
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1107,18 +1280,6 @@ function debounce(func, wait) {
     };
 }
 
-// 初期化
-document.addEventListener('DOMContentLoaded', function() {
-    updateSelectedCount();
-    
-    // 外部クリックで候補リスト非表示
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.movie-search-container')) {
-            document.querySelectorAll('.search-suggestions').forEach(el => {
-                el.style.display = 'none';
-            });
-        }
-    });
-});
+
 </script>
 {% endblock %}
