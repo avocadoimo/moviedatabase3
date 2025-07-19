@@ -287,6 +287,42 @@
         background-color: #f0f7ff;
     }
 
+    /* 検索フォーム切り替えボタン */
+    .search-toggle-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .search-toggle-btn {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #1a73e8, #1558b0);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+    }
+
+    .search-toggle-btn:hover {
+        background: linear-gradient(135deg, #1558b0, #1245a8);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+    }
+
+    .search-form {
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .search-form.collapsed {
+        max-height: 0;
+        padding: 0;
+        margin: 0;
+    }
+
     /* 折りたたみ機能 */
     .collapsible {
         cursor: pointer;
@@ -365,11 +401,18 @@
 
 {% block content %}
 
-<div class="search-form">
-    <form method="get" id="searchForm">
+<!-- 検索フォーム切り替えボタン -->
+<div class="search-toggle-container">
+    <button class="search-toggle-btn" onclick="toggleSearchForm()" id="searchToggleBtn">
+        🔍 検索条件を表示
+    </button>
+</div>
+
+<div class="search-form" id="searchForm" style="display: none;">
+    <form method="get" id="searchFormInner">
 
         <div class="form-grid">
-            <!-- キーワード検索（追加） -->
+            <!-- キーワード検索 -->
             <div class="form-row">
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label" for="keyword">キーワード</label>
@@ -378,6 +421,7 @@
                            placeholder="キーワードで検索">
                 </div>
             </div>
+            
             <!-- 基本検索 -->
             <div class="form-row">
                 <div class="form-group">
@@ -471,7 +515,7 @@
                 </div>
             </div>
 
-            <!-- 検索オプション（左右入れ替え） -->
+            <!-- 検索オプション -->
             <div class="search-options">
                 <div class="form-group">
                     <label class="form-label">年検索条件</label>
@@ -513,6 +557,9 @@
                 <button type="button" class="btn btn-secondary" onclick="clearForm()">
                     クリア
                 </button>
+                <button type="button" class="btn btn-secondary" onclick="toggleSearchForm()">
+                    ▲ 閉じる
+                </button>
             </div>
         </div>
     </form>
@@ -522,127 +569,134 @@
     <a href="{{ url_for('table_view', **request.args) }}">テーブル表示に切り替え</a>
 </div>
 
-<!-- 並び替えリンク部分のみ修正 -->
+<!-- 並び替えリンク（修正版） -->
 <div class="sort-links">
     並び替え:
     {% set sort_icon = {'desc': '▼', 'asc': '▲'} %}
     
-    <!-- 興行収入の並び替え -->
-    {% set revenue_params = [] %}
-    {% for key, value in args_no_page.items() %}
-        {% if value %}
-            {% set _ = revenue_params.append(key + '=' + value|string|urlencode) %}
-        {% endif %}
-    {% endfor %}
-    {% set revenue_query = '&'.join(revenue_params) %}
+    <!-- URL生成関数を簡素化 -->
+    {% macro build_sort_url(order_type, sort_type) %}
+        {% set params = [] %}
+        {% for key, value in request.args.items() %}
+            {% if key not in ['order_by', 'sort', 'page'] and value %}
+                {% set _ = params.append(key + '=' + (value|string|urlencode)) %}
+            {% endif %}
+        {% endfor %}
+        {% set query_string = params|join('&') %}
+        {{ url_for('search') }}?{{ query_string }}{% if query_string %}&{% endif %}order_by={{ order_type }}&sort={{ sort_type }}
+    {% endmacro %}
     
+    <!-- 興行収入の並び替え -->
     {% if order_by == 'revenue' %}
         {% if sort == 'desc' %}
-            <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=revenue&sort=asc">
-                興収{{ sort_icon['desc'] }}
-            </a>
+            <a href="{{ build_sort_url('revenue', 'asc') }}">興収{{ sort_icon['desc'] }}</a>
         {% else %}
-            <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=revenue&sort=desc">
-                興収{{ sort_icon['asc'] }}
-            </a>
+            <a href="{{ build_sort_url('revenue', 'desc') }}">興収{{ sort_icon['asc'] }}</a>
         {% endif %}
     {% else %}
-        <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=revenue&sort=desc">
-            興収
-        </a>
+        <a href="{{ build_sort_url('revenue', 'desc') }}">興収</a>
     {% endif %}
     
     <!-- 公開日の並び替え -->
     {% if order_by == 'release_date' %}
         {% if sort == 'desc' %}
-            <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=release_date&sort=asc">
-                公開日{{ sort_icon['desc'] }}
-            </a>
+            <a href="{{ build_sort_url('release_date', 'asc') }}">公開日{{ sort_icon['desc'] }}</a>
         {% else %}
-            <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=release_date&sort=desc">
-                公開日{{ sort_icon['asc'] }}
-            </a>
+            <a href="{{ build_sort_url('release_date', 'desc') }}">公開日{{ sort_icon['asc'] }}</a>
         {% endif %}
     {% else %}
-        <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=release_date&sort=desc">
-            公開日
-        </a>
+        <a href="{{ build_sort_url('release_date', 'desc') }}">公開日</a>
     {% endif %}
     
     <!-- 年の並び替え -->
     {% if order_by == 'year' %}
         {% if sort == 'desc' %}
-            <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=year&sort=asc">
-                年{{ sort_icon['desc'] }}
-            </a>
+            <a href="{{ build_sort_url('year', 'asc') }}">年{{ sort_icon['desc'] }}</a>
         {% else %}
-            <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=year&sort=desc">
-                年{{ sort_icon['asc'] }}
-            </a>
+            <a href="{{ build_sort_url('year', 'desc') }}">年{{ sort_icon['asc'] }}</a>
         {% endif %}
     {% else %}
-        <a href="{{ url_for('search') }}?{{ revenue_query }}&order_by=year&sort=desc">
-            年
-        </a>
+        <a href="{{ build_sort_url('year', 'desc') }}">年</a>
     {% endif %}
 </div>
 
 <div class="section-title">
     検索結果
-    {% if total_results %}
+    {% if total_results is defined and total_results %}
         <span style="font-size: 0.8em; color: #666;">({{ total_results }} 件)</span>
     {% endif %}
 </div>
 
 <div class="movie-grid">
-    {% for m in movies %}
-    <div class="movie-card">
-        <a href="{{ url_for('movie_detail', movie_id=m.id) }}">
-            <img src="{{ url_for('static', filename='posters/' ~ m.movie_id|string ~ '.jpg') }}" 
-                 alt="{{ m.title }}" 
-                 onerror="this.style.display='none'">
-        </a>
-        <h3>{{ m.title }}</h3>
-        <p>{{ m.release_date }}</p>
-        <p>興収: {{ m.revenue }} 億円</p>
-        <p>{{ m.distributor }}</p>
-    </div>
-    {% endfor %}
+    {% if movies %}
+        {% for m in movies %}
+        <div class="movie-card">
+            <a href="{{ url_for('movie_detail', movie_id=m.id) }}">
+                <img src="{{ url_for('static', filename='posters/' ~ (m.movie_id|string if m.movie_id else 'default') ~ '.jpg') }}" 
+                     alt="{{ m.title }}" 
+                     onerror="this.style.display='none'">
+            </a>
+            <h3>{{ m.title }}</h3>
+            <p>{{ m.release_date if m.release_date else '公開日不明' }}</p>
+            <p>興収: {{ m.revenue if m.revenue else '不明' }} 億円</p>
+            <p>{{ m.distributor if m.distributor else '配給会社不明' }}</p>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+            <h3>検索結果が見つかりませんでした</h3>
+            <p>検索条件を変更して再度お試しください。</p>
+        </div>
+    {% endif %}
 </div>
 
-{% if not movies %}
-<div style="text-align: center; padding: 40px; color: #666;">
-    <h3>検索結果が見つかりませんでした</h3>
-    <p>検索条件を変更して再度お試しください。</p>
-</div>
-{% endif %}
-
-<!-- ページネーション部分のみ修正 -->
+<!-- ページネーション（修正版） -->
+{% if pagination is defined and pagination.pages > 1 %}
 <div class="pagination">
     {% if pagination.has_prev %}
         {% set prev_params = [] %}
-        {% for key, value in request.args.to_dict().items() %}
+        {% for key, value in request.args.items() %}
             {% if key != 'page' and value %}
-                {% set _ = prev_params.append(key + '=' + value|string|urlencode) %}
+                {% set _ = prev_params.append(key + '=' + (value|string|urlencode)) %}
             {% endif %}
         {% endfor %}
-        {% set prev_query = '&'.join(prev_params) %}
-        <a href="{{ url_for('search') }}?{{ prev_query }}&page={{ pagination.prev_num }}">← 前へ</a>
+        {% set prev_query = prev_params|join('&') %}
+        <a href="{{ url_for('search') }}?{{ prev_query }}{% if prev_query %}&{% endif %}page={{ pagination.prev_num }}">← 前へ</a>
     {% endif %}
+    
     <span>ページ {{ pagination.page }} / {{ pagination.pages }}</span>
+    
     {% if pagination.has_next %}
         {% set next_params = [] %}
-        {% for key, value in request.args.to_dict().items() %}
+        {% for key, value in request.args.items() %}
             {% if key != 'page' and value %}
-                {% set _ = next_params.append(key + '=' + value|string|urlencode) %}
+                {% set _ = next_params.append(key + '=' + (value|string|urlencode)) %}
             {% endif %}
         {% endfor %}
-        {% set next_query = '&'.join(next_params) %}
-        <a href="{{ url_for('search') }}?{{ next_query }}&page={{ pagination.next_num }}">次へ →</a>
+        {% set next_query = next_params|join('&') %}
+        <a href="{{ url_for('search') }}?{{ next_query }}{% if next_query %}&{% endif %}page={{ pagination.next_num }}">次へ →</a>
     {% endif %}
 </div>
+{% endif %}
 
 <script>
+// 検索フォーム切り替え機能
+function toggleSearchForm() {
+    const searchForm = document.getElementById('searchForm');
+    const toggleBtn = document.getElementById('searchToggleBtn');
+    const isHidden = searchForm.style.display === 'none';
+    
+    if (isHidden) {
+        searchForm.style.display = 'block';
+        toggleBtn.textContent = '🔍 検索条件を隠す';
+        localStorage.setItem('searchFormVisible', 'true');
+    } else {
+        searchForm.style.display = 'none';
+        toggleBtn.textContent = '🔍 検索条件を表示';
+        localStorage.setItem('searchFormVisible', 'false');
+    }
+}
+
 // 折りたたみ機能
 function toggleCollapse(sectionId) {
     const content = document.getElementById(sectionId);
@@ -652,32 +706,81 @@ function toggleCollapse(sectionId) {
     trigger.classList.toggle('collapsed');
 }
 
-// フォームクリア
+// クリア機能の修正
 function clearForm() {
-    document.getElementById('searchForm').reset();
-    updateSelectionCounts();
+    const form = document.getElementById('searchFormInner');
+    if (form) {
+        form.reset();
+        updateSelectionCounts();
+        
+        // URLから検索パラメータを削除
+        const baseUrl = window.location.pathname;
+        window.location.href = baseUrl;
+    }
 }
 
 // 選択数カウント更新
 function updateSelectionCounts() {
     const yearCheckboxes = document.querySelectorAll('input[name="years"]:checked');
-    document.getElementById('yearCount').textContent = `選択: ${yearCheckboxes.length}件`;
+    const yearCountElement = document.getElementById('yearCount');
+    if (yearCountElement) {
+        yearCountElement.textContent = `選択: ${yearCheckboxes.length}件`;
+    }
     
     const genreCheckboxes = document.querySelectorAll('input[name="genres"]:checked');
-    document.getElementById('genreCount').textContent = `選択: ${genreCheckboxes.length}件`;
+    const genreCountElement = document.getElementById('genreCount');
+    if (genreCountElement) {
+        genreCountElement.textContent = `選択: ${genreCheckboxes.length}件`;
+    }
 }
 
-// ページロード時の初期化
+// ページロード時の初期化を修正
 document.addEventListener('DOMContentLoaded', function() {
+    // 検索フォームの表示状態を復元（localStorage優先）
+    const searchFormVisible = localStorage.getItem('searchFormVisible');
+    const hasSearchParams = window.location.search && window.location.search.length > 1;
+    
+    // localStorage の値が存在する場合はそれを優先
+    if (searchFormVisible !== null) {
+        if (searchFormVisible === 'true') {
+            document.getElementById('searchForm').style.display = 'block';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
+        } else {
+            document.getElementById('searchForm').style.display = 'none';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
+        }
+    } else {
+        // localStorage に値がない場合、検索パラメータがあれば表示
+        if (hasSearchParams) {
+            document.getElementById('searchForm').style.display = 'block';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を隠す';
+            localStorage.setItem('searchFormVisible', 'true');
+        } else {
+            // 初回訪問時は非表示
+            document.getElementById('searchForm').style.display = 'none';
+            document.getElementById('searchToggleBtn').textContent = '🔍 検索条件を表示';
+            localStorage.setItem('searchFormVisible', 'false');
+        }
+    }
+    
+    // 既存の折りたたみ初期化
     updateSelectionCounts();
     
-    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectionCounts);
     });
     
     // 初期状態で折りたたみ
-    toggleCollapse('yearSection');
-    toggleCollapse('genreSection');
+    const yearSection = document.getElementById('yearSection');
+    const genreSection = document.getElementById('genreSection');
+    
+    if (yearSection) {
+        toggleCollapse('yearSection');
+    }
+    if (genreSection) {
+        toggleCollapse('genreSection');
+    }
 });
 </script>
 

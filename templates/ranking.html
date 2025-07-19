@@ -236,6 +236,23 @@
         transform: translateY(-2px);
     }
 
+    .search-input-container {
+        position: relative;
+    }
+
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+
+
     /* レスポンシブ */
     @media (max-width: 767px) {
         .page-container {
@@ -258,6 +275,7 @@
             padding: 20px;
         }
     }
+
 </style>
 {% endblock %}
 
@@ -332,12 +350,16 @@
             
             <div class="form-group">
                 <label class="form-label" for="search_value">検索キーワード</label>
-                <input type="text" 
-                       id="search_value" 
-                       name="search_value" 
-                       class="form-input" 
-                       placeholder="例: 宮崎駿、木村拓哉、アニメ、2020年など"
-                       required>
+                <div class="search-input-container">
+                    <input type="text" 
+                           id="search_value" 
+                           name="search_value" 
+                           class="form-input" 
+                           placeholder="例: 宮崎駿、木村拓哉、アニメ、2020年など"
+                           autocomplete="off"
+                           required>
+                    <div id="searchSuggestions" class="search-suggestions" style="display: none;"></div>
+                </div>
             </div>
             
             <button type="submit" class="search-btn">
@@ -348,6 +370,71 @@
 </div>
 
 <script>
+// 検索候補機能
+let searchTimeout;
+
+document.getElementById('search_value').addEventListener('input', function() {
+    const query = this.value.trim();
+    const categoryType = document.getElementById('category_type').value;
+    
+    clearTimeout(searchTimeout);
+    
+    if (query.length < 2) {
+        hideSuggestions();
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetchSuggestions(query, categoryType);
+    }, 300);
+});
+
+function fetchSuggestions(query, categoryType) {
+    fetch(`/api/ranking-suggestions?type=${categoryType}&term=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            showSuggestions(data);
+        })
+        .catch(error => {
+            console.error('検索候補取得エラー:', error);
+            hideSuggestions();
+        });
+}
+
+function showSuggestions(suggestions) {
+    const suggestionsDiv = document.getElementById('searchSuggestions');
+    
+    if (suggestions.length === 0) {
+        hideSuggestions();
+        return;
+    }
+    
+    suggestionsDiv.innerHTML = suggestions.map(item => `
+        <div class="suggestion-item" onclick="selectSuggestion('${item.value.replace(/'/g, "\\'")}')">
+            <span>${item.value}</span>
+            <span class="suggestion-meta">${item.count || 0}作品</span>
+        </div>
+    `).join('');
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+function hideSuggestions() {
+    document.getElementById('searchSuggestions').style.display = 'none';
+}
+
+function selectSuggestion(value) {
+    document.getElementById('search_value').value = value;
+    hideSuggestions();
+}
+
+// 外部クリックで候補を隠す
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.search-input-container')) {
+        hideSuggestions();
+    }
+});
+
 function viewRanking(queryType, queryValue) {
     window.location.href = `/ranking/custom/${encodeURIComponent(queryType)}/${encodeURIComponent(queryValue)}`;
 }
