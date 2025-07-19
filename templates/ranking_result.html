@@ -437,8 +437,8 @@
                             
                             {% if movie.actor %}
                             <div class="meta-row">
-                                {% set actors_list = movie.actor.split('、')[:3] %}
-                                <span class="meta-item">🎭 {% for actor in actors_list %}{{ actor.strip() }}{% if not loop.last %}, {% endif %}{% endfor %}{% if movie.actor.split('、')|length > 3 %}ほか{% endif %}</span>
+                                {% set actors_list = movie.actor.split(',')[:3] %}
+                                <span class="meta-item">🎭 {% for actor in actors_list %}{{ actor.strip() }}{% if not loop.last %}, {% endif %}{% endfor %}{% if movie.actor.split(',')|length > 3 %}ほか{% endif %}</span>
                             </div>
                             {% endif %}
 
@@ -481,8 +481,8 @@
                         
                         {% if movie.actor %}
                         <div class="ranking-meta-row">
-                            {% set actors_list = movie.actor.split('、')[:3] %}
-                            <span>🎭 {% for actor in actors_list %}{{ actor.strip() }}{% if not loop.last %}, {% endif %}{% endfor %}{% if movie.actor.split('、')|length > 3 %}ほか{% endif %}</span>
+                            {% set actors_list = movie.actor.split(',')[:3] %}
+                            <span>🎭 {% for actor in actors_list %}{{ actor.strip() }}{% if not loop.last %}, {% endif %}{% endfor %}{% if movie.actor.split(',')|length > 3 %}ほか{% endif %}</span>
                         </div>
                         {% endif %}
                         
