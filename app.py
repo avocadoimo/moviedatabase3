@@ -2485,10 +2485,6 @@ def admin_create_article():
         categories=categories,
         article=None
     )
-@app.route("/admin/articles/new-enhanced", methods=['GET', 'POST'])
-@site_access_required
-@admin_required
-def admin_create_article_enhanced():
 
 @app.route("/api/upload-image", methods=['POST'])
 @site_access_required
